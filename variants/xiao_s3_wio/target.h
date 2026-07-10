@@ -5,6 +5,9 @@
 #include <helpers/radiolib/RadioLibWrappers.h>
 #include <helpers/ESP32Board.h>
 #include <helpers/radiolib/CustomSX1262Wrapper.h>
+#ifdef DUAL_SX1262_REPEATER
+  #include <helpers/radiolib/DualSX1262Wrapper.h>
+#endif
 #include <helpers/AutoDiscoverRTCClock.h>
 #include <helpers/sensors/EnvironmentSensorManager.h>
 #ifdef DISPLAY_CLASS

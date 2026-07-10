@@ -957,6 +957,9 @@ void MyMesh::begin(FILESYSTEM *fs) {
 
   radio_driver.setParams(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
   radio_driver.setTxPower(_prefs.tx_power_dbm);
+#ifdef DUAL_SX1262_REPEATER
+  radio_driver.loadConfig();
+#endif
 
   radio_driver.setRxBoostedGainMode(_prefs.rx_boosted_gain);
   MESH_DEBUG_PRINTLN("RX Boosted Gain Mode: %s",
@@ -1053,7 +1056,11 @@ void MyMesh::dumpLogFile() {
 }
 
 void MyMesh::setTxPower(int8_t power_dbm) {
+#ifdef DUAL_SX1262_REPEATER
+  radio_driver.setCommonTxPower(power_dbm);
+#else
   radio_driver.setTxPower(power_dbm);
+#endif
 }
 
 bool MyMesh::setRxBoostedGain(bool enable) {
@@ -1173,6 +1180,7 @@ void MyMesh::clearStats() {
 }
 
 void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply) {
+  size_t reply_capacity = 160;
   if (region_load_active) {
     if (StrHelper::isBlank(command)) {  // empty/blank line, signal to terminate 'load' operation
       region_map = temp_map;  // copy over the temp instance as new current map
@@ -1212,8 +1220,15 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
   if (strlen(command) > 4 && command[2] == '|') { // optional prefix (for companion radio CLI)
     memcpy(reply, command, 3);                    // reflect the prefix back
     reply += 3;
+    reply_capacity -= 3;
     command += 3;
   }
+
+#ifdef DUAL_SX1262_REPEATER
+  if (radio_driver.handleCommand(command, reply, reply_capacity)) {
+    return;
+  }
+#endif
 
   // handle ACL related commands
   if (memcmp(command, "setperm ", 8) == 0) {   // format:  setperm {pubkey-hex} {permissions-int8}
