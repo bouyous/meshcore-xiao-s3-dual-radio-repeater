@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="920" viewBox="0 0 1800 920" role="img" aria-labelledby="title desc">
+  <title id="title">MeshCore dual-radio repeater architecture</title>
+  <desc id="desc">A single MeshCore identity links an omnidirectional valley port and a directional backhaul port. Transmissions are serialized with a guard interval.</desc>
+  <defs>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #16202a; letter-spacing: 0; }
+      .title { font-size: 44px; font-weight: 700; }
+      .subtitle { font-size: 21px; fill: #4b5967; }
+      .node { font-size: 25px; font-weight: 700; }
+      .label { font-size: 18px; }
+      .small { font-size: 15px; fill: #4b5967; }
+      .mono { font-size: 16px; font-family: Consolas, "Courier New", monospace; }
+      .inverse { fill: #ffffff; }
+      .inverse-small { fill: #dfe4e8; }
+    </style>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="#16825d"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="#d86f16"/></marker>
+  </defs>
+
+  <rect width="1800" height="920" fill="#f6f8fa"/>
+  <text x="70" y="70" class="title">One identity, two RF sectors, serialized transmissions</text>
+  <text x="70" y="108" class="subtitle">MeshCore sees one repeater; the wrapper selects the physical egress port</text>
+
+  <!-- Valley -->
+  <rect x="65" y="180" width="420" height="300" rx="8" fill="#e8f4ef" stroke="#16825d" stroke-width="4"/>
+  <text x="275" y="226" text-anchor="middle" class="node">VALLEY sector</text>
+  <text x="275" y="258" text-anchor="middle" class="label">Omnidirectional antenna</text>
+  <circle cx="155" cy="337" r="34" fill="#fbfcfd" stroke="#16825d" stroke-width="3"/>
+  <circle cx="275" cy="337" r="34" fill="#fbfcfd" stroke="#16825d" stroke-width="3"/>
+  <circle cx="395" cy="337" r="34" fill="#fbfcfd" stroke="#16825d" stroke-width="3"/>
+  <path d="M155 330 q-28 -30 0 -60 M155 330 q28 -30 0 -60" fill="none" stroke="#16825d" stroke-width="3"/>
+  <path d="M275 330 q-28 -30 0 -60 M275 330 q28 -30 0 -60" fill="none" stroke="#16825d" stroke-width="3"/>
+  <path d="M395 330 q-28 -30 0 -60 M395 330 q28 -30 0 -60" fill="none" stroke="#16825d" stroke-width="3"/>
+  <text x="275" y="423" text-anchor="middle" class="small">Users and nearby MeshCore nodes</text>
+
+  <!-- Repeater -->
+  <rect x="610" y="155" width="580" height="350" rx="8" fill="#fbfcfd" stroke="#25313c" stroke-width="4"/>
+  <rect x="640" y="180" width="520" height="76" rx="6" fill="#25313c"/>
+  <text x="900" y="214" text-anchor="middle" class="node inverse">XIAO ESP32-S3</text>
+  <text x="900" y="242" text-anchor="middle" class="small inverse-small">one MeshCore identity / one dispatcher</text>
+
+  <rect x="650" y="290" width="220" height="145" rx="6" fill="#e8f4ef" stroke="#16825d" stroke-width="3"/>
+  <text x="760" y="327" text-anchor="middle" class="node">VALLEY</text>
+  <text x="760" y="358" text-anchor="middle" class="small">Wio-SX1262 #1</text>
+  <text x="760" y="386" text-anchor="middle" class="mono">B2B / GPIO39-42</text>
+  <text x="760" y="414" text-anchor="middle" class="small">RX while idle</text>
+
+  <rect x="930" y="290" width="220" height="145" rx="6" fill="#fff4e9" stroke="#d86f16" stroke-width="3"/>
+  <text x="1040" y="327" text-anchor="middle" class="node">BACKHAUL</text>
+  <text x="1040" y="358" text-anchor="middle" class="small">Wio-SX1262 #2</text>
+  <text x="1040" y="386" text-anchor="middle" class="mono">J1/J2 / GPIO1-4</text>
+  <text x="1040" y="414" text-anchor="middle" class="small">RX while idle</text>
+
+  <path d="M485 330 C535 330 560 330 610 330" stroke="#16825d" stroke-width="6" fill="none" marker-end="url(#arrowGreen)" marker-start="url(#arrowGreen)"/>
+  <text x="548" y="312" text-anchor="middle" class="small">same RF profile</text>
+
+  <!-- Backhaul -->
+  <rect x="1315" y="180" width="420" height="300" rx="8" fill="#fff4e9" stroke="#d86f16" stroke-width="4"/>
+  <text x="1525" y="226" text-anchor="middle" class="node">BACKHAUL link</text>
+  <text x="1525" y="258" text-anchor="middle" class="label">Directional antenna</text>
+  <path d="M1405 392 L1490 305 L1518 333 L1432 420 Z" fill="#fbfcfd" stroke="#d86f16" stroke-width="4"/>
+  <line x1="1460" y1="362" x2="1565" y2="292" stroke="#d86f16" stroke-width="5" marker-end="url(#arrowOrange)"/>
+  <path d="M1582 272 l70 -38 l0 76 z" fill="#fbfcfd" stroke="#d86f16" stroke-width="4"/>
+  <text x="1525" y="452" text-anchor="middle" class="small">Remote summit or relay</text>
+  <path d="M1190 330 C1240 330 1265 330 1315 330" stroke="#d86f16" stroke-width="6" fill="none" marker-end="url(#arrowOrange)" marker-start="url(#arrowOrange)"/>
+
+  <!-- Rules -->
+  <rect x="65" y="555" width="770" height="285" rx="8" fill="#fbfcfd" stroke="#c4ccd4" stroke-width="3"/>
+  <text x="95" y="600" class="node">Forwarding rules</text>
+  <text x="95" y="643" class="label">1. Receive on both enabled ports while idle.</text>
+  <text x="95" y="680" class="label">2. Same frame on both ports: keep the better SNR/RSSI copy.</text>
+  <text x="95" y="717" class="label">3. VALLEY ingress exits BACKHAUL; BACKHAUL ingress exits VALLEY.</text>
+  <text x="95" y="754" class="label">4. Local packets are transmitted once per enabled port.</text>
+  <text x="95" y="791" class="label">5. CRC, ingress cache and MeshCore packet hashes stop duplicates.</text>
+
+  <!-- Timeline -->
+  <rect x="875" y="555" width="860" height="285" rx="8" fill="#fbfcfd" stroke="#c4ccd4" stroke-width="3"/>
+  <text x="905" y="600" class="node">Local-packet TX timeline</text>
+  <line x1="925" y1="735" x2="1690" y2="735" stroke="#7b8792" stroke-width="3"/>
+
+  <rect x="925" y="650" width="135" height="68" rx="5" fill="#edf1f4" stroke="#7b8792" stroke-width="2"/>
+  <text x="992" y="678" text-anchor="middle" class="label">both</text>
+  <text x="992" y="702" text-anchor="middle" class="small">standby</text>
+
+  <rect x="1060" y="650" width="80" height="68" rx="5" fill="#fffbea" stroke="#b05d00" stroke-width="2"/>
+  <text x="1100" y="691" text-anchor="middle" class="small">guard</text>
+
+  <rect x="1140" y="630" width="210" height="88" rx="5" fill="#e8f4ef" stroke="#16825d" stroke-width="3"/>
+  <text x="1245" y="668" text-anchor="middle" class="label">VALLEY TX</text>
+  <text x="1245" y="696" text-anchor="middle" class="small">BACKHAUL standby</text>
+
+  <rect x="1350" y="650" width="80" height="68" rx="5" fill="#fffbea" stroke="#b05d00" stroke-width="2"/>
+  <text x="1390" y="691" text-anchor="middle" class="small">guard</text>
+
+  <rect x="1430" y="630" width="210" height="88" rx="5" fill="#fff4e9" stroke="#d86f16" stroke-width="3"/>
+  <text x="1535" y="668" text-anchor="middle" class="label">BACKHAUL TX</text>
+  <text x="1535" y="696" text-anchor="middle" class="small">VALLEY standby</text>
+
+  <rect x="1640" y="650" width="70" height="68" rx="5" fill="#edf1f4" stroke="#7b8792" stroke-width="2"/>
+  <text x="1675" y="678" text-anchor="middle" class="small">both</text>
+  <text x="1675" y="702" text-anchor="middle" class="small">RX</text>
+
+  <text x="925" y="782" class="small">No TX/TX and no TX/RX overlap. Default guard: 10 ms.</text>
+  <text x="925" y="812" class="small">Both receivers are deaf during guard + airtime; crossing frames can be missed.</text>
+</svg>
