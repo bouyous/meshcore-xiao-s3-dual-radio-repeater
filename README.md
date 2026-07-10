@@ -1,128 +1,142 @@
-## About MeshCore
+# MeshCore Dual-Radio Repeater for XIAO ESP32-S3
 
-MeshCore is a lightweight, portable C++ library that enables multi-hop packet routing for embedded projects using LoRa and other packet radios. It is designed for developers who want to create resilient, decentralized communication networks that work without the internet.
+[Version française](README.fr.md) | English documentation below
 
-## 🔍 What is MeshCore?
+Experimental MeshCore repeater firmware for one **Seeed Studio XIAO ESP32-S3** driving two **Seeed Studio Wio-SX1262 for XIAO** radio boards.
 
-MeshCore now supports a range of LoRa devices, allowing for easy flashing without the need to compile firmware manually. Users can flash a pre-built binary using tools like Adafruit ESPTool and interact with the network through a serial console.
-MeshCore provides the ability to create wireless mesh networks, similar to Meshtastic and Reticulum but with a focus on lightweight multi-hop packet routing for embedded projects. Unlike Meshtastic, which is tailored for casual LoRa communication, or Reticulum, which offers advanced networking, MeshCore balances simplicity with scalability, making it ideal for custom embedded solutions, where devices (nodes) can communicate over long distances by relaying messages through intermediate nodes. This is especially useful in off-grid, emergency, or tactical situations where traditional communication infrastructure is unavailable.
+The node keeps one MeshCore identity and therefore appears as one repeater. The two physical RF ports have distinct jobs:
 
-## ⚡ Key Features
+- `VALLEY`: Wio-SX1262 connected through the standard 30-pin board-to-board connector, intended for an omnidirectional local-coverage antenna.
+- `BACKHAUL`: second Wio-SX1262 connected through the XIAO side headers, intended for a directional point-to-point antenna.
 
-* Multi-Hop Packet Routing
-  * Devices can forward messages across multiple nodes, extending range beyond a single radio's reach.
-  * Supports up to a configurable number of hops to balance network efficiency and prevent excessive traffic.
-  * Nodes use fixed roles where "Companion" nodes are not repeating messages at all to prevent adverse routing paths from being used.
-* Supports LoRa Radios – Works with Heltec, RAK Wireless, and other LoRa-based hardware.
-* Decentralized & Resilient – No central server or internet required; the network is self-healing.
-* Low Power Consumption – Ideal for battery-powered or solar-powered devices.
-* Simple to Deploy – Pre-built example applications make it easy to get started.
+This is a bench-tested proof of concept based on MeshCore `repeater-v1.16.0` commit `07a3ca9`. It is not an official MeshCore release.
 
-## 🎯 What Can You Use MeshCore For?
+![Dual-radio wiring overview](docs/assets/dual-radio-wiring.svg)
 
-* Off-Grid Communication: Stay connected even in remote areas.
-* Emergency Response & Disaster Recovery: Set up instant networks where infrastructure is down.
-* Outdoor Activities: Hiking, camping, and adventure racing communication.
-* Tactical & Security Applications: Military, law enforcement, and private security use cases.
-* IoT & Sensor Networks: Collect data from remote sensors and relay it back to a central location.
+## Why this exists
 
-## 🚀 How to Get Started
+The original use case is a repeater on a mountain summit. A directional antenna provides the inter-summit backhaul while an omnidirectional antenna serves users in the valley. Both radios use the same MeshCore RF profile, but packets are forwarded from the receiving side to the opposite side.
 
-- Watch the [MeshCore QuickStart Playlist](https://www.youtube.com/watch?v=iaFltojJrAc&list=PLshzThxhw4O4WU_iZo3NmNZOv6KMrUuF9) by The Comms Channel
-- Watch the [MeshCore Technical Presentation](https://www.youtube.com/watch?v=OwmkVkZQTf4) by Liam Cottle.
-- Read through our [Frequently Asked Questions](./docs/faq.md) and [Documentation](https://docs.meshcore.io).
-- Flash the MeshCore firmware on a supported device.
-- Connect with a supported client.
+The work started as a raw RadioLib bridge to validate the wiring. Each Wio-SX1262 was then tested independently in both directions. Once both radios ran reliably on one XIAO, the design was integrated into the official MeshCore repeater firmware.
 
-For developers:
+See [Development history](docs/HISTORY.md) for the full sequence and measured results.
 
-- Install [PlatformIO](https://docs.platformio.org) in [Visual Studio Code](https://code.visualstudio.com).
-- Clone and open the MeshCore repository in Visual Studio Code.
-- See the example applications you can modify and run:
-  - [Companion Radio](./examples/companion_radio) - For use with an external chat app, over BLE, USB or Wi-Fi.
-  - [KISS Modem](./examples/kiss_modem) - Serial KISS protocol bridge for host applications. ([protocol docs](./docs/kiss_modem_protocol.md))
-  - [Simple Repeater](./examples/simple_repeater) - Extends network coverage by relaying messages.
-  - [Simple Room Server](./examples/simple_room_server) - A simple BBS server for shared Posts.
-  - [Simple Secure Chat](./examples/simple_secure_chat) - Secure terminal based text communication between devices.
-  - [Simple Sensor](./examples/simple_sensor) - Remote sensor node with telemetry and alerting.
+## Hardware
 
-The Simple Secure Chat example can be interacted with through the Serial Monitor in Visual Studio Code, or with a Serial USB Terminal on Android.
+- 1 x [Seeed Studio XIAO ESP32-S3](https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/)
+- 2 x [Seeed Studio Wio-SX1262 for XIAO](https://wiki.seeedstudio.com/wio_sx1262_with_xiao_esp32s3_kit/)
+- 2 x matched LoRa antennas or dummy loads
+- Side headers for the second Wio-SX1262
+- Optional qualified rechargeable 3.7 V LiPo and insulated pigtail, soldered to the XIAO underside before stacking
 
-## ⚡️ MeshCore Flasher
+The side-header mapping was checked against Seeed's published schematics and validated on the two physical Wio-SX1262 boards used for this prototype. Hardware revisions can differ, so verify the silkscreen and continuity before soldering another revision.
 
-We have prebuilt firmware ready to flash on supported devices.
+Full instructions: [Wiring tutorial](docs/WIRING.md).
 
-- Launch https://meshcore.io/flasher
-- Select a supported device
-- Flash one of the firmware types:
-  - Companion, Repeater or Room Server
-- Once flashing is complete, you can connect with one of the MeshCore clients below.
+## Firmware behavior
 
-## 📱 MeshCore Clients
+- One MeshCore identity and one repeater advertisement.
+- Both SX1262 radios listen while the repeater is idle.
+- The radios never transmit simultaneously.
+- Both receivers enter standby before any transmission.
+- Default 10 ms guard time before TX and between sequential transmissions.
+- A frame received on `VALLEY` is eligible for retransmission only on `BACKHAUL`, and vice versa.
+- Locally generated packets are sent sequentially on both enabled ports.
+- Identical frames received simultaneously are coalesced; the port with the better SNR/RSSI becomes the ingress port.
+- MeshCore's packet-hash table remains the final duplicate and loop protection layer.
+- RF frequency, bandwidth, spreading factor and coding rate remain common to both radios.
 
-**Companion Firmware**
+![Packet flow and TX arbitration](docs/assets/dual-radio-architecture.svg)
 
-The companion firmware can be connected to via BLE, USB or Wi-Fi depending on the firmware type you flashed.
+Technical details: [Architecture](docs/ARCHITECTURE.md).
 
-- Web: https://app.meshcore.nz
-- Android: https://play.google.com/store/apps/details?id=com.liamcottle.meshcore.android
-- iOS: https://apps.apple.com/us/app/meshcore/id6742354151?platform=iphone
-- NodeJS: https://github.com/liamcottle/meshcore.js
-- Python: https://github.com/fdlamotte/meshcore-cli
+## Dual-radio CLI
 
-**Repeater and Room Server Firmware**
+The commands work in the MeshCore USB console. They use the same `MyMesh::handleCommand()` path as authenticated remote administration, although remote over-the-air operation has not yet been field-tested.
 
-The repeater and room server firmware can be set up via USB in the web config tool.
-
-- https://config.meshcore.io
-
-They can also be managed via LoRa in the mobile app by using the Remote Management feature.
-
-## 🛠 Hardware Compatibility
-
-MeshCore is designed for devices listed in the [MeshCore Flasher](https://meshcore.io/flasher)
-
-## 📜 License
-
-MeshCore is open-source software released under the MIT License. You are free to use, modify, and distribute it for personal and commercial projects.
-
-## Contributing
-
-Please submit PR's using 'dev' as the base branch!
-For minor changes just submit your PR and we'll try to review it, but for anything more 'impactful' please open an Issue first and start a discussion. It is better to sound out what it is you want to achieve first, and try to come to a consensus on what the best approach is, especially when it impacts the structure or architecture of this codebase.
-
-Here are some general principles you should try to adhere to:
-* Keep it simple. Please, don't think like a high-level lang programmer. Think embedded, and keep code concise, without any unnecessary layers.
-* No dynamic memory allocation, except during setup/begin functions.
-* Use the same brace and indenting style that's in the core source modules. (A .clang-format is probably going to be added soon, but please do NOT retroactively re-format existing code. This just creates unnecessary diffs that make finding problems harder)
-
-Help us prioritize! Please react with thumbs-up to issues/PRs you care about most. We look at reaction counts when planning work.
-
-### Running unit tests
-
-To run unit tests, run the following command:
-
-```bash
-pio test --environment native --verbose
+```text
+get dualradio
+get valley
+get backhaul
+stats valley
+stats backhaul
+set valley tx 14
+set backhaul tx 22
+set valley enabled on
+set backhaul enabled on
+set dualradio guard 10
+clear dualradio.stats
+reset dualradio
+dualradio help
 ```
 
-## Road-Map / To-Do
+The standard MeshCore command `set tx <dBm>` still sets both radios together. Custom TX values are limited to `-9..22 dBm`. At least one port must remain enabled. Settings are persisted in ESP32 NVS.
 
-There are a number of fairly major features in the pipeline, with no particular time-frames attached yet. In very rough chronological order:
-- [X] Companion radio: UI redesign
-- [X] Repeater + Room Server: add ACL's (like Sensor Node has)
-- [X] Standardise Bridge mode for repeaters
-- [ ] Repeater/Bridge: Standardise the Transport Codes for zoning/filtering
-- [X] Core + Repeater: enhanced zero-hop neighbour discovery
-- [ ] Core: round-trip manual path support
-- [ ] Companion + Apps: support for multiple sub-meshes (and 'off-grid' client repeat mode)
-- [ ] Core + Apps: support for LZW message compression
-- [ ] Core: dynamic CR (Coding Rate) for weak vs strong hops
-- [ ] Core: new framework for hosting multiple virtual nodes on one physical device
-- [ ] V2 protocol spec: discussion and consensus around V2 packet protocol, including path hashes, new encryption specs, etc
+Command reference: [Dual-radio CLI](docs/CLI.md).
 
-## 📞 Get Support
+## Build
 
-- Report bugs and request features on the [GitHub Issues](https://github.com/ripplebiz/MeshCore/issues) page.
-- Find additional guides and components on [my site](https://buymeacoffee.com/ripplebiz).
-- Join [MeshCore Discord](https://meshcore.gg) to chat with the developers and get help from the community.
+Install PlatformIO, then run from the repository root:
+
+```powershell
+pio run -e Xiao_S3_WIO_dual_repeater
+```
+
+Flash a connected XIAO:
+
+```powershell
+pio run -e Xiao_S3_WIO_dual_repeater -t upload --upload-port COM26
+```
+
+Replace `COM26` with the port assigned by Windows.
+
+## Prebuilt firmware
+
+Two images are provided in [`firmware/`](firmware/):
+
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3.bin`: application image for offset `0x10000`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3-merged.bin`: complete image for offset `0x0`.
+
+Verify hashes against [`firmware/SHA256SUMS.txt`](firmware/SHA256SUMS.txt).
+
+Example for the merged image:
+
+```powershell
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3-merged.bin
+```
+
+Read [FLASHING.md](docs/FLASHING.md) before using the command, especially when choosing between the merged and application-only images.
+
+After a fresh or merged-image flash, connect through the MeshCore configurator and replace the default administration password (`password`) before deployment. An application-only update normally preserves the existing MeshCore identity and settings, but always verify them after flashing.
+
+## Validation status
+
+Validated on the bench on 10 July 2026:
+
+- both SX1262 radios initialize successfully on one XIAO;
+- independent side-header radio TX and RX;
+- six of six packets received in each direction during the initial raw-radio tests;
+- local MeshCore advertisement produces one `VALLEY` TX followed by one `BACKHAUL` TX;
+- per-port enable, power, guard and statistics commands;
+- settings survive reboot;
+- original MeshCore repeater identity survives firmware updates.
+
+See the exact results and remaining gaps in [TEST_REPORT.md](docs/TEST_REPORT.md).
+
+For maintainers who want to review only the delta from upstream, use [`patches/meshcore-repeater-v1.16.0-dual-sx1262.patch`](patches/meshcore-repeater-v1.16.0-dual-sx1262.patch).
+
+## Important limitations
+
+- This is not a full-duplex repeater. Neither radio receives while either radio transmits.
+- Software timing does not provide RF isolation. Antenna spacing, polarization, filtering, enclosure layout and coupled power must be validated at the final site.
+- The prototype has not yet completed a long-duration load test or a mountain-to-mountain field trial.
+- Over-the-air use of the custom CLI is implemented through the common command path but has only been validated over USB so far.
+- The operator is responsible for regional frequency, duty-cycle and EIRP compliance.
+
+Never transmit without a matched antenna or dummy load on both Wio-SX1262 boards.
+
+## Upstream and attribution
+
+This repository is derived from [meshcore-dev/MeshCore](https://github.com/meshcore-dev/MeshCore), licensed under the MIT License. The original README is preserved as [UPSTREAM_README.md](UPSTREAM_README.md).
+
+The prototype was developed as a personal project by GitHub user `bouyous`, in collaboration with OpenAI ChatGPT/Codex. Hardware assembly and physical testing were performed by the project owner; code generation, analysis and documentation were assisted by ChatGPT/Codex. This project is not endorsed by OpenAI, Seeed Studio or the MeshCore maintainers.

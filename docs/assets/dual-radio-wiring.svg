@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1260" viewBox="0 0 1800 1260" role="img" aria-labelledby="title desc">
+  <title id="title">Dual Wio-SX1262 wiring for Seeed Studio XIAO ESP32-S3</title>
+  <desc id="desc">One Wio-SX1262 uses the standard 30-pin connector. A second Wio-SX1262 shares SPI and power through the side headers but uses independent DIO1, BUSY, RESET and NSS pins.</desc>
+  <defs>
+    <style>
+      text { font-family: "Segoe UI", Arial, sans-serif; fill: #16202a; letter-spacing: 0; }
+      .title { font-size: 44px; font-weight: 700; }
+      .subtitle { font-size: 21px; fill: #4b5967; }
+      .board-title { font-size: 27px; font-weight: 700; }
+      .role { font-size: 18px; font-weight: 700; }
+      .label { font-size: 17px; }
+      .small { font-size: 14px; fill: #4b5967; }
+      .pin { font-size: 15px; font-family: Consolas, "Courier New", monospace; }
+      .section { font-size: 20px; font-weight: 700; }
+      .wire-shared { stroke: #16825d; stroke-width: 5; fill: none; }
+      .wire-control { stroke: #d86f16; stroke-width: 5; fill: none; }
+      .wire-b2b { stroke: #3977b7; stroke-width: 12; fill: none; }
+      .thin { stroke-width: 2; }
+    </style>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3977b7"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="1260" fill="#f6f8fa"/>
+  <text x="70" y="70" class="title">One MeshCore repeater, two Wio-SX1262 RF ports</text>
+  <text x="70" y="108" class="subtitle">Verified prototype wiring - top view - XIAO USB-C points north</text>
+
+  <path d="M900 148 L900 122" stroke="#3977b7" stroke-width="4" marker-end="url(#arrowBlue)"/>
+  <text x="925" y="140" class="small">USB / NORTH</text>
+
+  <!-- VALLEY board -->
+  <rect x="55" y="185" width="505" height="675" rx="8" fill="#e8f4ef" stroke="#16825d" stroke-width="4"/>
+  <rect x="75" y="205" width="465" height="84" rx="6" fill="#16825d"/>
+  <text x="95" y="241" class="board-title" fill="#ffffff">Wio-SX1262 for XIAO #1</text>
+  <text x="95" y="272" class="role" fill="#ffffff">VALLEY / omnidirectional antenna</text>
+  <rect x="170" y="315" width="275" height="88" rx="6" fill="#ffffff" stroke="#3977b7" stroke-width="3"/>
+  <text x="307" y="350" text-anchor="middle" class="section">30-pin B2B connector</text>
+  <text x="307" y="378" text-anchor="middle" class="small">standard Seeed kit connection</text>
+
+  <text x="92" y="452" class="section">Signals supplied by B2B</text>
+  <g class="pin">
+    <text x="92" y="491">DIO1    - GPIO39</text>
+    <text x="92" y="526">BUSY    - GPIO40</text>
+    <text x="92" y="561">NSS/CS  - GPIO41</text>
+    <text x="92" y="596">RESET   - GPIO42</text>
+    <text x="92" y="646" fill="#16825d">SCK     - GPIO7  / D8</text>
+    <text x="92" y="681" fill="#16825d">MISO    - GPIO8  / D9</text>
+    <text x="92" y="716" fill="#16825d">MOSI    - GPIO9  / D10</text>
+    <text x="92" y="751" fill="#16825d">POWER   - 3V3 + GND</text>
+  </g>
+  <rect x="170" y="785" width="275" height="52" rx="6" fill="#ffffff" stroke="#16825d" stroke-width="3"/>
+  <text x="307" y="818" text-anchor="middle" class="label">LoRa antenna connector</text>
+
+  <!-- XIAO board -->
+  <rect x="650" y="185" width="500" height="675" rx="8" fill="#ffffff" stroke="#25313c" stroke-width="4"/>
+  <rect x="785" y="150" width="230" height="72" rx="8" fill="#dfe4e8" stroke="#25313c" stroke-width="4"/>
+  <text x="900" y="196" text-anchor="middle" class="section">USB-C</text>
+  <text x="690" y="270" class="board-title">Seeed Studio XIAO ESP32-S3</text>
+  <text x="690" y="305" class="role" fill="#3977b7">Single MeshCore identity and scheduler</text>
+
+  <rect x="705" y="342" width="390" height="88" rx="6" fill="#edf4fb" stroke="#3977b7" stroke-width="3"/>
+  <text x="900" y="376" text-anchor="middle" class="section">Shared SPI bus</text>
+  <text x="900" y="405" text-anchor="middle" class="pin">D8/GPIO7 SCK - D9/GPIO8 MISO - D10/GPIO9 MOSI</text>
+
+  <text x="695" y="479" class="section">Left side / J1 control</text>
+  <g class="pin">
+    <rect x="695" y="500" width="185" height="38" rx="5" fill="#fff1e6" stroke="#d86f16" stroke-width="2"/>
+    <text x="710" y="525">D0 / GPIO1</text>
+    <rect x="695" y="548" width="185" height="38" rx="5" fill="#fff1e6" stroke="#d86f16" stroke-width="2"/>
+    <text x="710" y="573">D1 / GPIO2</text>
+    <rect x="695" y="596" width="185" height="38" rx="5" fill="#fff1e6" stroke="#d86f16" stroke-width="2"/>
+    <text x="710" y="621">D2 / GPIO3</text>
+    <rect x="695" y="644" width="185" height="38" rx="5" fill="#fff1e6" stroke="#d86f16" stroke-width="2"/>
+    <text x="710" y="669">D3 / GPIO4</text>
+  </g>
+  <text x="920" y="522" class="label">DIO1</text>
+  <text x="920" y="570" class="label">BUSY</text>
+  <text x="920" y="618" class="label">RESET</text>
+  <text x="920" y="666" class="label">NSS / CS</text>
+
+  <text x="695" y="732" class="section">Right side / J2 power + SPI</text>
+  <text x="695" y="768" class="pin" fill="#16825d">VIN - GND - 3V3 - D10/MOSI - D9/MISO - D8/SCK</text>
+  <rect x="742" y="790" width="316" height="48" rx="6" fill="#f1f3f5" stroke="#25313c" stroke-width="2"/>
+  <text x="900" y="821" text-anchor="middle" class="label">Keep USB D-/D+ GPIO19/20 unused</text>
+
+  <!-- BACKHAUL board -->
+  <rect x="1240" y="185" width="505" height="675" rx="8" fill="#fff4e9" stroke="#d86f16" stroke-width="4"/>
+  <rect x="1260" y="205" width="465" height="84" rx="6" fill="#d86f16"/>
+  <text x="1280" y="241" class="board-title" fill="#ffffff">Wio-SX1262 for XIAO #2</text>
+  <text x="1280" y="272" class="role" fill="#ffffff">BACKHAUL / directional antenna</text>
+
+  <text x="1278" y="336" class="section">J1 - independent control</text>
+  <g class="pin">
+    <text x="1278" y="376">J1-1  DIO1   - D0 / GPIO1</text>
+    <text x="1278" y="411">J1-2  BUSY   - D1 / GPIO2</text>
+    <text x="1278" y="446">J1-3  RESET  - D2 / GPIO3</text>
+    <text x="1278" y="481">J1-4  NSS/CS - D3 / GPIO4</text>
+    <text x="1278" y="516" fill="#4b5967">J1-5  RF_SW1 - D4 / GPIO5 (unused)</text>
+    <text x="1278" y="551" fill="#4b5967">J1-6/7 NC   - D5/D6</text>
+  </g>
+
+  <text x="1278" y="610" class="section">J2 - aligned power and shared SPI</text>
+  <g class="pin">
+    <text x="1278" y="650" fill="#16825d">J2-1  VIN    - VIN / 5V</text>
+    <text x="1278" y="685" fill="#16825d">J2-2  GND    - GND</text>
+    <text x="1278" y="720" fill="#16825d">J2-3  3V3    - 3V3</text>
+    <text x="1278" y="755" fill="#16825d">J2-4  MOSI   - D10 / GPIO9</text>
+    <text x="1278" y="790" fill="#16825d">J2-5  MISO   - D9 / GPIO8</text>
+    <text x="1278" y="825" fill="#16825d">J2-6  SCK    - D8 / GPIO7</text>
+  </g>
+
+  <!-- Logical connectors -->
+  <path d="M445 359 C535 359 575 359 650 359" class="wire-b2b"/>
+  <text x="548" y="340" text-anchor="middle" class="small" fill="#3977b7">30-pin B2B</text>
+  <path d="M1150 519 C1190 519 1205 519 1240 519" class="wire-control"/>
+  <path d="M1150 758 C1190 758 1205 758 1240 758" class="wire-shared"/>
+
+  <!-- Bottom safety strip -->
+  <rect x="55" y="900" width="1690" height="305" rx="8" fill="#fffbea" stroke="#b05d00" stroke-width="3"/>
+  <text x="85" y="941" class="section" fill="#8f4700">Pre-power checklist</text>
+  <text x="85" y="980" class="label">1. With USB disconnected, confirm VIN / GND / 3V3 alignment and continuity on both boards.</text>
+  <text x="85" y="1013" class="label">2. Confirm the two NSS lines are independent: GPIO41 for VALLEY, GPIO4 for BACKHAUL.</text>
+  <text x="85" y="1046" class="label">3. Connect a matched antenna or dummy load to both Wio-SX1262 boards before any TX test.</text>
+  <text x="85" y="1079" class="label">4. Solder the battery pigtail to the XIAO underside before the BACKHAUL board blocks access.</text>
+
+  <!-- Battery inset -->
+  <rect x="1110" y="930" width="210" height="135" rx="8" fill="#ffffff" stroke="#16825d" stroke-width="3"/>
+  <rect x="1130" y="951" width="145" height="90" rx="8" fill="#dcefe7" stroke="#16825d" stroke-width="3"/>
+  <rect x="1275" y="980" width="23" height="34" rx="3" fill="#dcefe7" stroke="#16825d" stroke-width="3"/>
+  <text x="1202" y="987" text-anchor="middle" class="section">3.7 V LiPo</text>
+  <text x="1202" y="1020" text-anchor="middle" class="small">rechargeable</text>
+
+  <rect x="1440" y="930" width="250" height="220" rx="8" fill="#ffffff" stroke="#25313c" stroke-width="3"/>
+  <rect x="1500" y="912" width="130" height="42" rx="6" fill="#dfe4e8" stroke="#25313c" stroke-width="3"/>
+  <text x="1565" y="940" text-anchor="middle" class="small">USB-C</text>
+  <text x="1565" y="980" text-anchor="middle" class="section">XIAO underside</text>
+  <circle cx="1510" cy="1024" r="23" fill="#30363d" stroke="#111820" stroke-width="3"/>
+  <text x="1510" y="1030" text-anchor="middle" font-size="17" fill="#ffffff">-</text>
+  <text x="1550" y="1030" class="pin">BAT- nearest USB</text>
+  <circle cx="1510" cy="1090" r="23" fill="#d7372f" stroke="#9d231f" stroke-width="3"/>
+  <text x="1510" y="1096" text-anchor="middle" font-size="17" fill="#ffffff">+</text>
+  <text x="1550" y="1096" class="pin">BAT+ away from USB</text>
+
+  <path d="M1298 997 C1360 997 1390 1024 1487 1024" stroke="#30363d" stroke-width="5" fill="none"/>
+  <path d="M1298 1019 C1360 1080 1390 1090 1487 1090" stroke="#d7372f" stroke-width="5" fill="none"/>
+  <text x="1400" y="1177" text-anchor="middle" class="small">Solder and insulate this pigtail before stacking radio #2.</text>
+</svg>
