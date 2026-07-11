@@ -30,16 +30,18 @@ Before any TX:
 2. The configured guard delay elapses.
 3. Exactly one SX1262 begins transmitting.
 
-For a forwarded packet, the stored ingress signature selects only the opposite port:
+For a forwarded packet, the stored ingress signature selects the transmission order:
 
-| Ingress | Egress |
-| --- | --- |
-| `VALLEY` | `BACKHAUL` |
-| `BACKHAUL` | `VALLEY` |
+| Ingress | First TX | Second TX |
+| --- | --- | --- |
+| `VALLEY` | `BACKHAUL` | `VALLEY` |
+| `BACKHAUL` | `VALLEY` | `BACKHAUL` |
 
-For locally generated traffic with no remembered ingress, `VALLEY` transmits first. Once that transmission has completely finished, the guard delay elapses and `BACKHAUL` transmits the same frame. Both receivers return to RX only after the full sequence.
+For locally generated traffic with no remembered ingress, `VALLEY` transmits first. Once the first transmission has completely finished, the guard delay elapses and the other port transmits the same frame. Both receivers return to RX only after the full sequence.
 
 There is no simultaneous TX/TX or TX/RX operation.
+
+Both physical transmissions use one MeshCore identity. Client applications that count acknowledgement events instead of unique public keys may display more than one "heard by" event for this single repeater.
 
 ## Loop protection
 

@@ -51,10 +51,10 @@ index 096907494b9e94e4eae7768ed588b432f6869656..8b8775160c52fcba48ac45e3a46c272f
      char* hex = &command[8];
 diff --git a/src/helpers/radiolib/DualSX1262Wrapper.cpp b/src/helpers/radiolib/DualSX1262Wrapper.cpp
 new file mode 100644
-index 0000000000000000000000000000000000000000..27b4ce1cb8a58ef3b788891e8d02c9e6b5807197
+index 0000000000000000000000000000000000000000..5f06aba0f60897327ac05cff2b9034a7c5820789
 --- /dev/null
 +++ b/src/helpers/radiolib/DualSX1262Wrapper.cpp
-@@ -0,0 +1,1020 @@
+@@ -0,0 +1,1038 @@
 +#include "DualSX1262Wrapper.h"
 +
 +#include <Preferences.h>
@@ -82,6 +82,10 @@ index 0000000000000000000000000000000000000000..27b4ce1cb8a58ef3b788891e8d02c9e6
 +
 +#ifndef DUAL_SX1262_LOCAL_TX_BOTH
 +#define DUAL_SX1262_LOCAL_TX_BOTH 1
++#endif
++
++#ifndef DUAL_SX1262_FORWARD_TX_BOTH
++#define DUAL_SX1262_FORWARD_TX_BOTH 1
 +#endif
 +
 +volatile bool DualSX1262Wrapper::valley_flag = false;
@@ -435,7 +439,7 @@ index 0000000000000000000000000000000000000000..27b4ce1cb8a58ef3b788891e8d02c9e6
 +
 +uint32_t DualSX1262Wrapper::getEstAirtimeFor(int len_bytes) {
 +  uint32_t airtime_ms = _slots[PortValley].radio->getTimeOnAir(len_bytes) / 1000;
-+#if DUAL_SX1262_LOCAL_TX_BOTH
++#if DUAL_SX1262_LOCAL_TX_BOTH || DUAL_SX1262_FORWARD_TX_BOTH
 +  if (_slots[PortValley].enabled && _slots[PortBackhaul].enabled) {
 +    return (airtime_ms * 2) + _inter_tx_guard_ms;
 +  }
@@ -1020,6 +1024,19 @@ index 0000000000000000000000000000000000000000..27b4ce1cb8a58ef3b788891e8d02c9e6
 +  *second_port = PortNone;
 +
 +  Port ingress = findIngress(computeSignature(bytes, len));
++#if DUAL_SX1262_FORWARD_TX_BOTH
++  if (_slots[PortValley].enabled && _slots[PortBackhaul].enabled) {
++    if (ingress == PortValley) {
++      *second_port = PortValley;
++      return PortBackhaul;
++    }
++    *second_port = PortBackhaul;
++    return PortValley;
++  }
++  if (_slots[PortValley].enabled) return PortValley;
++  if (_slots[PortBackhaul].enabled) return PortBackhaul;
++  return PortNone;
++#else
 +  if (ingress == PortValley) {
 +    return _slots[PortBackhaul].enabled ? PortBackhaul : PortNone;
 +  }
@@ -1039,6 +1056,7 @@ index 0000000000000000000000000000000000000000..27b4ce1cb8a58ef3b788891e8d02c9e6
 +  if (_slots[PortBackhaul].enabled) return PortBackhaul;
 +  if (_slots[PortValley].enabled) return PortValley;
 +  return PortNone;
++#endif
 +#endif
 +}
 +
@@ -1270,10 +1288,10 @@ index 7ae06a359bc354b8d90e65dac3a813e649e03e59..a99b923f29802951bff0ace90af9115b
    }
  };
 diff --git a/variants/xiao_s3_wio/platformio.ini b/variants/xiao_s3_wio/platformio.ini
-index db8c5a9486fde163bb33a972d06a99f8e8461eb6..5123affa44c16b3c438775fb271beb60bb19d022 100644
+index db8c5a9486fde163bb33a972d06a99f8e8461eb6..828cddb18cca4d44d2098c4ca850dc5e58894e10 100644
 --- a/variants/xiao_s3_wio/platformio.ini
 +++ b/variants/xiao_s3_wio/platformio.ini
-@@ -53,6 +53,31 @@ lib_deps =
+@@ -53,6 +53,32 @@ lib_deps =
    ${Xiao_S3_WIO.lib_deps}
    ${esp32_ota.lib_deps}
  
@@ -1286,7 +1304,8 @@ index db8c5a9486fde163bb33a972d06a99f8e8461eb6..5123affa44c16b3c438775fb271beb60
 +  -D WRAPPER_CLASS=DualSX1262Wrapper
 +  -D DUAL_SX1262_REPEATER=1
 +  -D DUAL_SX1262_LOCAL_TX_BOTH=1
-+  -D FIRMWARE_VERSION='"v1.16.0-dual.3"'
++  -D DUAL_SX1262_FORWARD_TX_BOTH=1
++  -D FIRMWARE_VERSION='"v1.16.0-dual.4"'
 +  -D P_LORA2_DIO_1=1
 +  -D P_LORA2_BUSY=2
 +  -D P_LORA2_RESET=3

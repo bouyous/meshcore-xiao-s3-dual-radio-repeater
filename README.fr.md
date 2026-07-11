@@ -57,8 +57,8 @@ Utiliser uniquement une batterie lithium rechargeable qualifiée de **3,7 V**. N
 
 - Les deux radios écoutent lorsque le répéteur est au repos.
 - Une seule radio émet à la fois.
-- Un paquet reçu côté `VALLEY` est retransmis uniquement côté `BACKHAUL`, et inversement.
-- Les paquets créés localement sont envoyés successivement sur les deux ports activés.
+- Tout paquet que MeshCore décide de relayer est envoyé successivement sur les deux ports activés ; le port opposé à la réception émet en premier.
+- Les paquets créés localement sont eux aussi envoyés successivement sur les deux ports activés.
 - Un cache de signatures et la table anti-doublons MeshCore empêchent les boucles ordinaires.
 - La fréquence, la bande passante, le spreading factor et le coding rate restent communs aux deux radios.
 - La puissance TX et l’activation peuvent être réglées séparément pour chaque port.
@@ -100,7 +100,7 @@ pio run -e Xiao_S3_WIO_dual_repeater -t upload --upload-port COM26
 Avec l’image complète fournie :
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4-merged.bin
 ```
 
 Remplacer `COM26` si Windows attribue un autre port. Ne jamais écrire l’image d’application seule à l’adresse `0x0` ; elle doit être écrite à `0x10000`. La procédure complète et le mode récupération sont dans [FLASHING.md](docs/FLASHING.md).
@@ -118,7 +118,9 @@ Le prototype a été compilé, flashé et testé sur `COM26` le 10 juillet 2026 
 - réglages persistants après redémarrage ;
 - identité MeshCore d’origine conservée lors de la mise à jour applicative.
 
-La version installée est `v1.16.0-dual.3`. La configuration finale relevée est : deux ports activés, `22 dBm` sur chacun, garde `10 ms`, fréquence `869.6179809 MHz`, bande passante `62.5 kHz`, SF `8`, CR `8`.
+La version installée est `v1.16.0-dual.4`. La configuration finale relevée est : deux ports activés, `22 dBm` sur chacun, garde `10 ms`, fréquence `869.6179809 MHz`, bande passante `62.5 kHz`, SF `8`, CR `8`. Des essais MeshCore réels ont confirmé trois relais logiques et trois émissions physiques sur chacun des deux ports, sans erreur radio.
+
+Certains clients MeshCore comptent les réceptions ou accusés physiques plutôt que les identités uniques. Le compteur « entendu par » peut donc augmenter plusieurs fois pour le dual-radio, alors que la liste affiche correctement une seule identité de répéteur.
 
 Les essais longue durée, l’isolation RF réelle entre antennes et la liaison montagne à montagne restent à effectuer. Voir le [rapport de test](docs/TEST_REPORT.md).
 
