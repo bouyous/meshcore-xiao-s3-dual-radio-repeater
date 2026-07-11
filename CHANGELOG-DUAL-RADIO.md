@@ -1,5 +1,13 @@
 # Dual-radio changelog
 
+## v1.16.0-dual.4 - 2026-07-11
+
+- Transmit every MeshCore-selected forwarded packet sequentially on both enabled RF ports.
+- Transmit on the port opposite the ingress first, then on the ingress-side port.
+- Include both physical transmissions in airtime estimation.
+- Validate simultaneous dual-radio reception, duplicate coalescing and symmetric live-network forwarding.
+- Document that MeshCore clients may count multiple acknowledgement events for the single dual-radio identity.
+
 ## v1.16.0-dual.3 - 2026-07-10
 
 - Reduce the default TX guard from 40 ms to 10 ms to shorten the receive-blind interval.

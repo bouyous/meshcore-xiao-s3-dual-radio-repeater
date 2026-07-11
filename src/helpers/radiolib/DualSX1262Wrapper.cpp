@@ -27,6 +27,10 @@
 #define DUAL_SX1262_LOCAL_TX_BOTH 1
 #endif
 
+#ifndef DUAL_SX1262_FORWARD_TX_BOTH
+#define DUAL_SX1262_FORWARD_TX_BOTH 1
+#endif
+
 volatile bool DualSX1262Wrapper::valley_flag = false;
 volatile bool DualSX1262Wrapper::backhaul_flag = false;
 
@@ -378,7 +382,7 @@ void DualSX1262Wrapper::storePending(Port port, const uint8_t* bytes, int len, f
 
 uint32_t DualSX1262Wrapper::getEstAirtimeFor(int len_bytes) {
   uint32_t airtime_ms = _slots[PortValley].radio->getTimeOnAir(len_bytes) / 1000;
-#if DUAL_SX1262_LOCAL_TX_BOTH
+#if DUAL_SX1262_LOCAL_TX_BOTH || DUAL_SX1262_FORWARD_TX_BOTH
   if (_slots[PortValley].enabled && _slots[PortBackhaul].enabled) {
     return (airtime_ms * 2) + _inter_tx_guard_ms;
   }
@@ -963,6 +967,19 @@ DualSX1262Wrapper::Port DualSX1262Wrapper::chooseTxPort(const uint8_t* bytes, in
   *second_port = PortNone;
 
   Port ingress = findIngress(computeSignature(bytes, len));
+#if DUAL_SX1262_FORWARD_TX_BOTH
+  if (_slots[PortValley].enabled && _slots[PortBackhaul].enabled) {
+    if (ingress == PortValley) {
+      *second_port = PortValley;
+      return PortBackhaul;
+    }
+    *second_port = PortBackhaul;
+    return PortValley;
+  }
+  if (_slots[PortValley].enabled) return PortValley;
+  if (_slots[PortBackhaul].enabled) return PortBackhaul;
+  return PortNone;
+#else
   if (ingress == PortValley) {
     return _slots[PortBackhaul].enabled ? PortBackhaul : PortNone;
   }
@@ -982,6 +999,7 @@ DualSX1262Wrapper::Port DualSX1262Wrapper::chooseTxPort(const uint8_t* bytes, in
   if (_slots[PortBackhaul].enabled) return PortBackhaul;
   if (_slots[PortValley].enabled) return PortValley;
   return PortNone;
+#endif
 #endif
 }
 

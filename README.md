@@ -17,7 +17,7 @@ This is a conceptual illustration of the intended valley and summit deployment. 
 
 ## Why this exists
 
-The original use case is a repeater on a mountain summit. A directional antenna provides the inter-summit backhaul while an omnidirectional antenna serves users in the valley. Both radios use the same MeshCore RF profile, but packets are forwarded from the receiving side to the opposite side.
+The original use case is a repeater on a mountain summit. A directional antenna provides the inter-summit backhaul while an omnidirectional antenna serves users in the valley. Both radios use the same MeshCore RF profile, and every packet selected by MeshCore for forwarding is transmitted sequentially on both ports.
 
 The work started as a raw RadioLib bridge to validate the wiring. Each Wio-SX1262 was then tested independently in both directions. Once both radios ran reliably on one XIAO, the design was integrated into the official MeshCore repeater firmware.
 
@@ -48,8 +48,7 @@ The [step-by-step assembly guide](docs/ASSEMBLY.md) uses photographs of the actu
 - The radios never transmit simultaneously.
 - Both receivers enter standby before any transmission.
 - Default 10 ms guard time before TX and between sequential transmissions.
-- A frame received on `VALLEY` is eligible for retransmission only on `BACKHAUL`, and vice versa.
-- Locally generated packets are sent sequentially on both enabled ports.
+- Forwarded and locally generated packets are sent sequentially on both enabled ports; the port opposite the ingress transmits first.
 - Identical frames received simultaneously are coalesced; the port with the better SNR/RSSI becomes the ingress port.
 - MeshCore's packet-hash table remains the final duplicate and loop protection layer.
 - RF frequency, bandwidth, spreading factor and coding rate remain common to both radios.
@@ -102,15 +101,15 @@ Replace `COM26` with the port assigned by Windows.
 
 Two images are provided in [`firmware/`](firmware/):
 
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3.bin`: application image for offset `0x10000`.
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3-merged.bin`: complete image for offset `0x0`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4.bin`: application image for offset `0x10000`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4-merged.bin`: complete image for offset `0x0`.
 
 Verify hashes against [`firmware/SHA256SUMS.txt`](firmware/SHA256SUMS.txt).
 
 Example for the merged image:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.3-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4-merged.bin
 ```
 
 Read [FLASHING.md](docs/FLASHING.md) before using the command, especially when choosing between the merged and application-only images.
@@ -119,12 +118,13 @@ After a fresh or merged-image flash, connect through the MeshCore configurator a
 
 ## Validation status
 
-Validated on the bench on 10 July 2026:
+Validated on the bench on 10 and 11 July 2026:
 
 - both SX1262 radios initialize successfully on one XIAO;
 - independent side-header radio TX and RX;
 - six of six packets received in each direction during the initial raw-radio tests;
 - local MeshCore advertisement produces one `VALLEY` TX followed by one `BACKHAUL` TX;
+- live MeshCore flood traffic produced three logical forwards and exactly three serialized transmissions on each RF port, with no reported radio errors;
 - per-port enable, power, guard and statistics commands;
 - settings survive reboot;
 - original MeshCore repeater identity survives firmware updates.
@@ -138,6 +138,7 @@ For maintainers who want to review only the delta from upstream, use [`patches/m
 - This is not a full-duplex repeater. Neither radio receives while either radio transmits.
 - Software timing does not provide RF isolation. Antenna spacing, polarization, filtering, enclosure layout and coupled power must be validated at the final site.
 - The prototype has not yet completed a long-duration load test or a mountain-to-mountain field trial.
+- Some MeshCore clients count physical receptions or acknowledgements rather than unique repeater identities. A dual-radio forward can therefore increase "heard by" more than once while the identity list correctly shows one repeater.
 - Over-the-air use of the custom CLI is implemented through the common command path but has only been validated over USB so far.
 - The operator is responsible for regional frequency, duty-cycle and EIRP compliance.
 

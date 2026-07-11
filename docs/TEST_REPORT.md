@@ -1,6 +1,6 @@
 # Bench test report
 
-Date: 10 July 2026
+Date: 10-11 July 2026
 
 ## Hardware under test
 
@@ -14,14 +14,14 @@ Date: 10 July 2026
 - MeshCore tag: `repeater-v1.16.0`
 - Upstream commit: `07a3ca9e05b0ab23b878200b2c44b04e08131972`
 - Variant: `Xiao_S3_WIO_dual_repeater`
-- Firmware version string: `v1.16.0-dual.3`
+- Firmware version string: `v1.16.0-dual.4`
 - Final RF profile read from `COM26`: `869.6179809 MHz`, `62.5 kHz` bandwidth, spreading factor `8`, coding rate `8`
 
 ## Build result
 
 ```text
 RAM:   59,792 / 327,680 bytes (18.2%)
-Flash: 1,136,605 / 3,342,336 bytes (34.0%)
+Flash: 1,136,585 / 3,342,336 bytes (34.0%)
 PlatformIO result: SUCCESS
 ```
 
@@ -71,7 +71,7 @@ After reboot:  VALLEY=21, BACKHAUL=20, guard=60
 Result: PASS
 ```
 
-The final `dual.3` state was restored to `22/22 dBm`, both enabled, guard `10 ms`.
+The final `dual.4` state was restored to `22/22 dBm`, both enabled, guard `10 ms`.
 
 ## Sequential TX validation
 
@@ -85,11 +85,33 @@ BACKHAUL: tx=1
 
 This confirms one logical MeshCore advertisement and two serialized physical transmissions.
 
+## Live MeshCore traffic validation
+
+A companion node named `Test` transmitted at 2 dBm while the nearby roof repeater was moved temporarily to 916 MHz. The dual repeater remained on its normal test channel. A first isolated test produced:
+
+```text
+VALLEY:   rx=3, tx=2, errors=0
+BACKHAUL: rx=3, tx=2, errors=0
+MeshCore: recv=3, sent=4, flood_rx=2, flood_tx=2
+```
+
+A second mixed test sent eight operations from two clients: two messages per client, one zero-hop alert per client and one network alert per client. The result was:
+
+```text
+VALLEY:   rx=8, tx=3, errors=0
+BACKHAUL: rx=8, tx=3, errors=0
+MeshCore: recv=8, sent=6, flood_rx=6, direct_rx=2, flood_tx=3
+```
+
+The two zero-hop packets were received but correctly not forwarded. Every packet selected by MeshCore for forwarding generated one serialized TX on each physical port. Duplicate receptions were coalesced and no radio receive errors were reported. After adding and allowing the `fr` transport region, traffic from the second client was also forwarded.
+
+The client UI may report multiple "heard by" events for this node while listing only one repeater identity. This is expected when the same logical packet and its acknowledgements traverse both physical RF ports under one MeshCore public key.
+
 ## Firmware hashes
 
 ```text
-797BCA16DD0BA0395AB5975A9CD0511E79568704BFE53B5B626DD128BBC59D25  application image
-DA1F4FEEAA07F6088A9C76532A90E880E9493632E9151D517BDB790593348A20  merged image
+8D8B7270B7C216B3AD5F1D9A1D5284E66269D7E0C7A88BA94859D96C536CEB0A  application image
+425A3B93B0C1DE1CAF691FDBA3740F9BE1C93FA419CE67B1125330B8FD554762  merged image
 ```
 
 See [`../firmware/SHA256SUMS.txt`](../firmware/SHA256SUMS.txt).
