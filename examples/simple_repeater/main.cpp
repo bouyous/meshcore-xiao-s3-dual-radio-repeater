@@ -102,7 +102,9 @@ void setup() {
   ethernet_command[0] = 0;
 #endif
 
+#ifndef DISABLE_SENSOR_DISCOVERY
   sensors.begin();
+#endif
 
   the_mesh.begin(fs);
 

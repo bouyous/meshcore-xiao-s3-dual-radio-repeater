@@ -14,7 +14,7 @@ Date: 10-11 July 2026
 - MeshCore tag: `repeater-v1.16.0`
 - Upstream commit: `07a3ca9e05b0ab23b878200b2c44b04e08131972`
 - Variant: `Xiao_S3_WIO_dual_repeater`
-- Firmware version string: `v1.16.0-dual.4`
+- Firmware version string: `v1.16.0-dual.5`
 - Final RF profile read from `COM26`: `869.6179809 MHz`, `62.5 kHz` bandwidth, spreading factor `8`, coding rate `8`
 
 ## Build result
@@ -71,7 +71,7 @@ After reboot:  VALLEY=21, BACKHAUL=20, guard=60
 Result: PASS
 ```
 
-The final `dual.4` state was restored to `22/22 dBm`, both enabled, guard `10 ms`.
+The final `dual.5` state was restored to `22/22 dBm`, both enabled, guard `10 ms`.
 
 ## Sequential TX validation
 
@@ -122,11 +122,17 @@ Firmware after test: v1.16.0-dual.4
 
 No spontaneous restart, radio error or asymmetric TX count was observed. A deliberately over-fast command burst filled the MeshCore outbound queue and accepted fewer transmissions; this was a software queue limit, not evidence of supply failure. The test validates USB-powered operation but does not yet validate operation from a nearly discharged Li-ion cell. An oscilloscope measurement of the 3.3 V rail remains the correct way to quantify short voltage dips.
 
+## Fast-boot validation (`dual.5`)
+
+The previous build scanned every external I2C address despite this fixed repeater having no external I2C sensors. With an unpopulated bus, per-address timeouts delayed the CLI for roughly two minutes and emitted repeated `Error 263` messages. `dual.5` disables only that external sensor-discovery call for the dual-radio build.
+
+After flashing `dual.5`, a reset-to-CLI measurement returned `ver` after `1778 ms`. Both radios initialized before the reply, the MeshCore identity and persisted settings were preserved, and a zero-hop advertisement produced one TX on each port with zero radio errors.
+
 ## Firmware hashes
 
 ```text
-8D8B7270B7C216B3AD5F1D9A1D5284E66269D7E0C7A88BA94859D96C536CEB0A  application image
-425A3B93B0C1DE1CAF691FDBA3740F9BE1C93FA419CE67B1125330B8FD554762  merged image
+3A60D118E5D01BC13A064CAC6D3C05C6994B7F8082B7C36631881DF51809CD08  application image
+A3698D3E36F99819D82FAAE404FD86DFE76FC79283601B372FEF24CE75B60E7A  merged image
 ```
 
 See [`../firmware/SHA256SUMS.txt`](../firmware/SHA256SUMS.txt).
