@@ -11,7 +11,9 @@ The node keeps one MeshCore identity and therefore appears as one repeater. The 
 
 This is a bench-tested proof of concept based on MeshCore `repeater-v1.16.0` commit `07a3ca9`. It is not an official MeshCore release.
 
-![Dual-radio wiring overview](docs/assets/dual-radio-wiring.svg)
+![Concept illustration of the dual-radio summit repeater](docs/assets/dual-radio-repeater-overview.png)
+
+This is a conceptual illustration of the intended valley and summit deployment. It is not the verified pin-by-pin wiring diagram: use the [wiring tutorial](docs/WIRING.md) before assembling the hardware.
 
 ## Why this exists
 

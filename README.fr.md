@@ -11,7 +11,9 @@ Le but est de construire un relais de sommet avec une seule identité MeshCore :
 
 Le matériel apparaît donc comme **un seul répéteur** lors d’un scan MeshCore, même s’il possède deux ports radio physiques.
 
-![Schéma de câblage du répéteur bi-radio](docs/assets/dual-radio-wiring.svg)
+![Illustration du répéteur bi-radio au sommet](docs/assets/dual-radio-repeater-overview.png)
+
+Cette image présente le principe de déploiement entre vallée et sommet. Ce n'est pas le plan de câblage broche par broche : utiliser la [notice de câblage vérifiée](docs/WIRING.md) avant tout assemblage.
 
 ## Câblage essentiel
 
