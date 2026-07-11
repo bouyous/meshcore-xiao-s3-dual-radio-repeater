@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MeshCore dual-radio assembly tutorial</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1920px; height: 3000px; overflow: hidden; background: #edf1f4; }
+    body { background: #edf1f4; color: #10233f; font-family: Arial, Helvetica, sans-serif; }
+    .sheet { width: 1920px; height: 3000px; padding: 64px 72px; background: #f8fafb; }
+    .en { display: none; }
+    body[data-lang="en"] .fr { display: none; }
+    body[data-lang="en"] .en { display: block; }
+    .hero { height: 520px; display: grid; grid-template-columns: 0.92fr 1.08fr; gap: 38px; border-bottom: 5px solid #163c68; padding-bottom: 40px; }
+    .hero-copy { display: flex; flex-direction: column; justify-content: center; }
+    .eyebrow { color: #16825d; font-size: 26px; font-weight: 800; text-transform: uppercase; }
+    h1 { margin: 18px 0 20px; max-width: 760px; font-size: 72px; line-height: 1.02; letter-spacing: 0; }
+    .lede { margin: 0; max-width: 730px; font-size: 31px; line-height: 1.38; color: #334d68; }
+    .chips { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+    .chip { padding: 11px 16px; border-radius: 6px; background: #e1f0e9; color: #116447; font-size: 23px; font-weight: 700; }
+    .hero-photo { margin: 0; min-width: 0; height: 415px; align-self: center; background: #fbfcfd; border: 2px solid #c8d3dc; border-radius: 8px; overflow: hidden; }
+    .hero-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 38%; }
+    .section-head { display: flex; justify-content: space-between; align-items: end; margin: 38px 0 24px; }
+    .section-head h2 { margin: 0; font-size: 42px; }
+    .section-head p { margin: 0; font-size: 24px; color: #52677a; }
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+    .step { height: 705px; display: grid; grid-template-rows: 340px 1fr; background: #fbfcfd; border: 2px solid #cbd5dd; border-radius: 8px; overflow: hidden; }
+    .step-media { position: relative; display: grid; background: #eef2f5; min-width: 0; overflow: hidden; }
+    .step-media.two { grid-template-columns: 1fr 1fr; gap: 3px; }
+    .step-media img { width: 100%; height: 340px; object-fit: cover; object-position: center; }
+    .step-media.contain img { object-fit: contain; background: #fbfcfd; }
+    .step-body { padding: 27px 30px 24px; }
+    .step-title { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; }
+    .number { flex: 0 0 54px; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: #176bb0; color: #fff; font-size: 27px; font-weight: 800; }
+    .step.green .number { background: #4e7d35; }
+    .step h3 { margin: 0; font-size: 32px; line-height: 1.15; }
+    .step p { margin: 0 0 12px; font-size: 24px; line-height: 1.34; color: #334d68; }
+    .mapping { margin-top: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 21px; color: #10233f; }
+    .mapping span { padding: 8px 10px; background: #eef4f8; border-radius: 4px; }
+    .warnings { margin-top: 28px; min-height: 225px; display: grid; grid-template-columns: 118px 1fr; align-items: center; gap: 26px; padding: 28px 34px; background: #fff5d8; border: 3px solid #d79b20; border-radius: 8px; }
+    .warning-icon { font-size: 78px; text-align: center; }
+    .warnings h2 { margin: 0 0 10px; font-size: 34px; color: #4b3500; }
+    .warnings p { margin: 0; font-size: 25px; line-height: 1.4; color: #55431c; }
+    .footer { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 24px; }
+    .role { min-height: 225px; padding: 28px 30px; border-radius: 8px; color: #fff; }
+    .role.valley { background: #176bb0; }
+    .role.backhaul { background: #4e7d35; }
+    .role.result { background: #163c68; }
+    .role h3 { margin: 0 0 12px; font-size: 31px; }
+    .role p { margin: 0; font-size: 23px; line-height: 1.38; }
+    .credit { margin-top: 19px; text-align: right; font-size: 18px; color: #657789; }
+  </style>
+</head>
+<body>
+  <main class="sheet fr">
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Tutoriel d'assemblage · prototype réel</div>
+        <h1>Répéteur MeshCore bi-radio</h1>
+        <p class="lede">Un XIAO ESP32-S3, deux Wio-SX1262 et une seule identité MeshCore pour relier la vallée au backhaul de sommet.</p>
+        <div class="chips"><span class="chip">Seeed Studio XIAO ESP32-S3</span><span class="chip">2 × Wio-SX1262</span><span class="chip">Firmware dual.3</span></div>
+      </div>
+      <figure class="hero-photo"><img src="01-parts-overview.jpg" alt="Matériel réel du prototype"></figure>
+    </header>
+    <div class="section-head"><h2>Assemblage en quatre étapes</h2><p>USB et batterie débranchés pendant toute soudure</p></div>
+    <section class="steps">
+      <article class="step">
+        <div class="step-media contain"><img src="09-battery-pads.png" alt="Pads batterie officiels du XIAO ESP32-S3"></div>
+        <div class="step-body"><div class="step-title"><span class="number">1</span><h3>Préparer la batterie avant l'empilage</h3></div><p>Souder le faisceau sous le XIAO avant que le second Wio ne masque les pads.</p><div class="mapping"><span><strong>BAT−</strong> : côté USB-C</span><span><strong>BAT+</strong> : côté opposé</span><span>LiPo rechargeable 3,7 V</span><span>Contrôle au multimètre</span></div></div>
+      </article>
+      <article class="step">
+        <div class="step-media"><img src="03-valley-radio-mounted.jpg" alt="Premier Wio-SX1262 monté sur le connecteur B2B"></div>
+        <div class="step-body"><div class="step-title"><span class="number">2</span><h3>Monter le radio VALLEY</h3></div><p>Aligner les connecteurs 30 broches B2B du XIAO et du premier Wio-SX1262, puis presser bien droit.</p><p><strong>Rôle :</strong> antenne omnidirectionnelle pour les utilisateurs de la vallée.</p></div>
+      </article>
+      <article class="step green">
+        <div class="step-media two"><img src="05-dual-stack-top.jpg" alt="Empilage des deux radios, vue supérieure"><img src="06-dual-stack-side.jpg" alt="Empilage des deux radios, vue latérale"></div>
+        <div class="step-body"><div class="step-title"><span class="number">3</span><h3>Ajouter le radio BACKHAUL</h3></div><p>Présenter le second Wio sur les rangées latérales. Vérifier tout l'alignement avant de souder.</p><div class="mapping"><span>D0 DIO1 · D1 BUSY</span><span>D2 RESET · D3 NSS</span><span>D8 SCK · D9 MISO</span><span>D10 MOSI · 3V3 · GND</span></div></div>
+      </article>
+      <article class="step green">
+        <div class="step-media"><img src="02-parts-top.jpg" alt="Deux radios avec leurs antennes"></div>
+        <div class="step-body"><div class="step-title"><span class="number">4</span><h3>Brancher les deux antennes et contrôler</h3></div><p>Une antenne adaptée sur chaque prise U.FL avant tout essai TX. Inspecter les soudures et vérifier l'absence de court-circuit.</p><p><strong>Rôle BACKHAUL :</strong> antenne directionnelle vers le relais voisin.</p></div>
+      </article>
+    </section>
+    <section class="warnings"><div class="warning-icon">⚠</div><div><h2>Avant la première mise sous tension</h2><p>Vérifier VIN, GND et 3V3 ; confirmer que les deux NSS sont indépendants ; ne jamais émettre sans antenne ou charge adaptée ; isoler et soulager mécaniquement le faisceau batterie. La séparation RF des antennes doit être validée dans l'installation finale.</p></div></section>
+    <footer class="footer"><div class="role valley"><h3>VALLEY</h3><p>Wio n°1 · connecteur B2B<br>Antenne omnidirectionnelle<br>Couverture locale</p></div><div class="role backhaul"><h3>BACKHAUL</h3><p>Wio n°2 · broches J1/J2<br>Antenne directionnelle<br>Liaison inter-sommets</p></div><div class="role result"><h3>Résultat</h3><p>Deux ports RF physiques, des émissions sérialisées et une seule identité de répéteur visible dans MeshCore.</p></div></footer>
+    <div class="credit">Photos du prototype : bouyous · Documentation et mise en page : projet MeshCore dual-radio</div>
+  </main>
+
+  <main class="sheet en">
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Assembly tutorial · real prototype</div>
+        <h1>MeshCore dual-radio repeater</h1>
+        <p class="lede">One XIAO ESP32-S3, two Wio-SX1262 boards and one MeshCore identity linking valley coverage to a summit backhaul.</p>
+        <div class="chips"><span class="chip">Seeed Studio XIAO ESP32-S3</span><span class="chip">2 × Wio-SX1262</span><span class="chip">Firmware dual.3</span></div>
+      </div>
+      <figure class="hero-photo"><img src="01-parts-overview.jpg" alt="Real prototype hardware"></figure>
+    </header>
+    <div class="section-head"><h2>Assembly in four steps</h2><p>Disconnect USB and battery during all soldering</p></div>
+    <section class="steps">
+      <article class="step">
+        <div class="step-media contain"><img src="09-battery-pads.png" alt="Official XIAO ESP32-S3 battery pads"></div>
+        <div class="step-body"><div class="step-title"><span class="number">1</span><h3>Prepare the battery before stacking</h3></div><p>Solder the pigtail under the XIAO before the second Wio blocks access to the pads.</p><div class="mapping"><span><strong>BAT−</strong>: nearest USB-C</span><span><strong>BAT+</strong>: away from USB</span><span>Rechargeable 3.7 V LiPo</span><span>Check with a multimeter</span></div></div>
+      </article>
+      <article class="step">
+        <div class="step-media"><img src="03-valley-radio-mounted.jpg" alt="First Wio-SX1262 fitted through the B2B connector"></div>
+        <div class="step-body"><div class="step-title"><span class="number">2</span><h3>Fit the VALLEY radio</h3></div><p>Align the XIAO and first Wio-SX1262 30-pin B2B connectors, then press them together vertically.</p><p><strong>Role:</strong> omnidirectional antenna for valley users.</p></div>
+      </article>
+      <article class="step green">
+        <div class="step-media two"><img src="05-dual-stack-top.jpg" alt="Dual-radio stack, top view"><img src="06-dual-stack-side.jpg" alt="Dual-radio stack, side view"></div>
+        <div class="step-body"><div class="step-title"><span class="number">3</span><h3>Add the BACKHAUL radio</h3></div><p>Dry-fit the second Wio on the side headers. Check every row before soldering.</p><div class="mapping"><span>D0 DIO1 · D1 BUSY</span><span>D2 RESET · D3 NSS</span><span>D8 SCK · D9 MISO</span><span>D10 MOSI · 3V3 · GND</span></div></div>
+      </article>
+      <article class="step green">
+        <div class="step-media"><img src="02-parts-top.jpg" alt="Two radios with their antennas"></div>
+        <div class="step-body"><div class="step-title"><span class="number">4</span><h3>Connect both antennas and inspect</h3></div><p>Fit a suitable antenna to each U.FL connector before any TX test. Inspect every joint and check for shorts.</p><p><strong>BACKHAUL role:</strong> directional antenna toward the neighbouring relay.</p></div>
+      </article>
+    </section>
+    <section class="warnings"><div class="warning-icon">⚠</div><div><h2>Before the first power-up</h2><p>Verify VIN, GND and 3V3; confirm that both NSS lines are independent; never transmit without a suitable antenna or dummy load; insulate and strain-relieve the battery pigtail. RF isolation between antennas must be validated in the final installation.</p></div></section>
+    <footer class="footer"><div class="role valley"><h3>VALLEY</h3><p>Wio #1 · B2B connector<br>Omnidirectional antenna<br>Local coverage</p></div><div class="role backhaul"><h3>BACKHAUL</h3><p>Wio #2 · J1/J2 headers<br>Directional antenna<br>Inter-summit link</p></div><div class="role result"><h3>Result</h3><p>Two physical RF ports, serialized transmissions and one repeater identity visible in MeshCore.</p></div></footer>
+    <div class="credit">Prototype photographs: bouyous · Documentation and layout: MeshCore dual-radio project</div>
+  </main>
+  <script>
+    const lang = new URLSearchParams(window.location.search).get('lang') === 'en' ? 'en' : 'fr';
+    document.body.dataset.lang = lang;
+    document.documentElement.lang = lang;
+  </script>
+</body>
+</html>
