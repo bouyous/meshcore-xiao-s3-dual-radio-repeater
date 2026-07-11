@@ -17,30 +17,9 @@ This tutorial shows the actual prototype hardware: one **Seeed Studio XIAO ESP32
 
 ![Actual prototype parts](assets/assembly/01-parts-overview.jpg)
 
-## 1. Disconnect all power
+## Essential `BACKHAUL` wiring map
 
-Disconnect USB, battery and every other power source. Never solder a powered board. Fit an antenna or suitable dummy load to each Wio before any transmission test.
-
-## 2. Prepare the battery before stacking
-
-The battery pads are under the XIAO and become difficult to reach after the second Wio is fitted. Using USB-C as the orientation reference:
-
-- `BAT-` is the pad nearest USB-C and connects to the black lead;
-- `BAT+` is the pad away from USB-C and connects to the red lead.
-
-Use a qualified rechargeable 3.7 V lithium battery. Insulate both joints and add strain relief. Do not connect the battery to `VIN`, `5V` or `3V3`.
-
-![Official pinout and battery pads](assets/assembly/08-official-pinout.png)
-
-## 3. Fit the `VALLEY` Wio
-
-The first Wio-SX1262 uses Seeed's standard 30-pin B2B connector. Point the XIAO USB-C end upward, align both connectors and press vertically without twisting. This port is intended for the valley omnidirectional antenna.
-
-![First Wio fitted through the B2B connector](assets/assembly/03-valley-radio-mounted.jpg)
-
-## 4. Dry-fit the `BACKHAUL` Wio
-
-Before soldering, dry-fit the second Wio on the side headers. Both rows must stay parallel and the boards must not touch outside the intended connectors.
+The second Wio-SX1262 does not use the 30-pin B2B connector. It is fitted to the two XIAO side-header rows. Confirm this mapping before placing or soldering the board.
 
 The `J1` side provides the independent controls:
 
@@ -63,6 +42,31 @@ The `J2` side provides power and the shared SPI bus:
 | SCK | D8 | 7 |
 
 ![Second Wio silkscreen labels](assets/assembly/04-backhaul-pin-labels.jpg)
+
+## 1. Disconnect all power
+
+Disconnect USB, battery and every other power source. Never solder a powered board. Fit an antenna or suitable dummy load to each Wio before any transmission test.
+
+## 2. Prepare the battery before stacking
+
+The battery pads are under the XIAO and become difficult to reach after the second Wio is fitted. Using USB-C as the orientation reference:
+
+- `BAT-` is the pad nearest USB-C and connects to the black lead;
+- `BAT+` is the pad away from USB-C and connects to the red lead.
+
+Use a qualified rechargeable 3.7 V lithium battery. Insulate both joints and add strain relief. Do not connect the battery to `VIN`, `5V` or `3V3`.
+
+![Official battery pads](assets/assembly/09-battery-pads.png)
+
+## 3. Fit the `VALLEY` Wio
+
+The first Wio-SX1262 uses Seeed's standard 30-pin B2B connector. Point the XIAO USB-C end upward, align both connectors and press vertically without twisting. This port is intended for the valley omnidirectional antenna.
+
+![First Wio fitted through the B2B connector](assets/assembly/03-valley-radio-mounted.jpg)
+
+## 4. Dry-fit the `BACKHAUL` Wio
+
+Using the wiring map above, dry-fit the second Wio on the side headers. Both rows must stay parallel and the boards must not touch outside the intended connectors. Recheck the `J1` control side and `J2` power/SPI side before soldering.
 
 ## 5. Solder both rows
 
