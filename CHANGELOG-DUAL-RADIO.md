@@ -1,5 +1,11 @@
 # Dual-radio changelog
 
+## v1.16.0-dual.5 - 2026-07-11
+
+- Skip external I2C sensor discovery on the fixed dual-radio repeater hardware.
+- Remove the roughly two-minute boot delay caused by probing an unpopulated I2C bus.
+- Keep the internal fallback clock, radio initialization, CLI and core repeater telemetry unchanged.
+
 ## v1.16.0-dual.4 - 2026-07-11
 
 - Transmit every MeshCore-selected forwarded packet sequentially on both enabled RF ports.

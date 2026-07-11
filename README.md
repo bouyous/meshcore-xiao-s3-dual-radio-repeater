@@ -101,15 +101,15 @@ Replace `COM26` with the port assigned by Windows.
 
 Two images are provided in [`firmware/`](firmware/):
 
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4.bin`: application image for offset `0x10000`.
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4-merged.bin`: complete image for offset `0x0`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5.bin`: application image for offset `0x10000`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin`: complete image for offset `0x0`.
 
 Verify hashes against [`firmware/SHA256SUMS.txt`](firmware/SHA256SUMS.txt).
 
 Example for the merged image:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin
 ```
 
 Read [FLASHING.md](docs/FLASHING.md) before using the command, especially when choosing between the merged and application-only images.
@@ -126,6 +126,7 @@ Validated on the bench on 10 and 11 July 2026:
 - local MeshCore advertisement produces one `VALLEY` TX followed by one `BACKHAUL` TX;
 - live MeshCore flood traffic produced three logical forwards and exactly three serialized transmissions on each RF port, with no reported radio errors;
 - an optional `220 uF / 10 V` capacitor on the shared 3.3 V rail passed ten full-power dual-TX cycles under USB power (`10 + 10` physical transmissions, zero radio errors and no spontaneous restart);
+- `dual.5` reaches the USB CLI in 1.78 seconds after reset by skipping the external I2C sensor scan on this fixed hardware configuration;
 - per-port enable, power, guard and statistics commands;
 - settings survive reboot;
 - original MeshCore repeater identity survives firmware updates.

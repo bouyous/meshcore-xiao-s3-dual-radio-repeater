@@ -87,7 +87,9 @@ void setup() {
 
   command[0] = 0;
 
+#ifndef DISABLE_SENSOR_DISCOVERY
   sensors.begin();
+#endif
 
   the_mesh.begin(fs);
 

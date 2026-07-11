@@ -49,6 +49,20 @@ index 096907494b9e94e4eae7768ed588b432f6869656..8b8775160c52fcba48ac45e3a46c272f
    // handle ACL related commands
    if (memcmp(command, "setperm ", 8) == 0) {   // format:  setperm {pubkey-hex} {permissions-int8}
      char* hex = &command[8];
+diff --git a/examples/simple_repeater/main.cpp b/examples/simple_repeater/main.cpp
+index 2ce056f521086b1084d4522779fc9e4bc8aaddce..5ae025e38901ade663351de436c165c3e306814f 100644
+--- a/examples/simple_repeater/main.cpp
++++ b/examples/simple_repeater/main.cpp
+@@ -87,7 +87,9 @@ void setup() {
+ 
+   command[0] = 0;
+ 
++#ifndef DISABLE_SENSOR_DISCOVERY
+   sensors.begin();
++#endif
+ 
+   the_mesh.begin(fs);
+ 
 diff --git a/src/helpers/radiolib/DualSX1262Wrapper.cpp b/src/helpers/radiolib/DualSX1262Wrapper.cpp
 new file mode 100644
 index 0000000000000000000000000000000000000000..5f06aba0f60897327ac05cff2b9034a7c5820789
@@ -1288,10 +1302,10 @@ index 7ae06a359bc354b8d90e65dac3a813e649e03e59..a99b923f29802951bff0ace90af9115b
    }
  };
 diff --git a/variants/xiao_s3_wio/platformio.ini b/variants/xiao_s3_wio/platformio.ini
-index db8c5a9486fde163bb33a972d06a99f8e8461eb6..828cddb18cca4d44d2098c4ca850dc5e58894e10 100644
+index db8c5a9486fde163bb33a972d06a99f8e8461eb6..958977e430ffefee948a32c13f318e0c25240fb8 100644
 --- a/variants/xiao_s3_wio/platformio.ini
 +++ b/variants/xiao_s3_wio/platformio.ini
-@@ -53,6 +53,32 @@ lib_deps =
+@@ -53,6 +53,33 @@ lib_deps =
    ${Xiao_S3_WIO.lib_deps}
    ${esp32_ota.lib_deps}
  
@@ -1305,7 +1319,8 @@ index db8c5a9486fde163bb33a972d06a99f8e8461eb6..828cddb18cca4d44d2098c4ca850dc5e
 +  -D DUAL_SX1262_REPEATER=1
 +  -D DUAL_SX1262_LOCAL_TX_BOTH=1
 +  -D DUAL_SX1262_FORWARD_TX_BOTH=1
-+  -D FIRMWARE_VERSION='"v1.16.0-dual.4"'
++  -D DISABLE_SENSOR_DISCOVERY=1
++  -D FIRMWARE_VERSION='"v1.16.0-dual.5"'
 +  -D P_LORA2_DIO_1=1
 +  -D P_LORA2_BUSY=2
 +  -D P_LORA2_RESET=3
