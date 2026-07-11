@@ -117,6 +117,7 @@ Le prototype a été compilé, flashé et testé sur `COM26` le 10 juillet 2026 
 - commandes de puissance, activation, garde et statistiques validées ;
 - réglages persistants après redémarrage ;
 - identité MeshCore d’origine conservée lors de la mise à jour applicative.
+- condensateur facultatif `220 µF / 10 V` validé sur le rail 3,3 V partagé pendant dix cycles bi-radio à `22 dBm` sous alimentation USB, soit vingt émissions physiques sans erreur ni redémarrage spontané.
 
 La version installée est `v1.16.0-dual.4`. La configuration finale relevée est : deux ports activés, `22 dBm` sur chacun, garde `10 ms`, fréquence `869.6179809 MHz`, bande passante `62.5 kHz`, SF `8`, CR `8`. Des essais MeshCore réels ont confirmé trois relais logiques et trois émissions physiques sur chacun des deux ports, sans erreur radio.
 
