@@ -9,6 +9,14 @@
          <lastmod>2026-07-11</lastmod>
     </url>
     <url>
+         <loc>https://meshcore-dev.github.io/meshcore/ASSEMBLY.fr/</loc>
+         <lastmod>2026-07-11</lastmod>
+    </url>
+    <url>
+         <loc>https://meshcore-dev.github.io/meshcore/ASSEMBLY/</loc>
+         <lastmod>2026-07-11</lastmod>
+    </url>
+    <url>
          <loc>https://meshcore-dev.github.io/meshcore/CLI/</loc>
          <lastmod>2026-07-11</lastmod>
     </url>
@@ -78,6 +86,10 @@
     </url>
     <url>
          <loc>https://meshcore-dev.github.io/meshcore/terminal_chat_cli/</loc>
+         <lastmod>2026-07-11</lastmod>
+    </url>
+    <url>
+         <loc>https://meshcore-dev.github.io/meshcore/assets/assembly/</loc>
          <lastmod>2026-07-11</lastmod>
     </url>
 </urlset>
