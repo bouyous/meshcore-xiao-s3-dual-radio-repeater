@@ -1164,10 +1164,10 @@
 <p>Replace <code>COM26</code> with the current Windows port.</p>
 <h2 id="flash-the-merged-binary">Flash the merged binary</h2>
 <p>The merged image contains the bootloader, partition table, boot application and firmware. Flash it at offset <code>0x0</code>:</p>
-<pre><code class="language-powershell">esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4-merged.bin
+<pre><code class="language-powershell">esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin
 </code></pre>
 <p>The non-merged application image belongs at offset <code>0x10000</code>:</p>
-<pre><code class="language-powershell">esptool.py --chip esp32s3 --port COM26 write_flash 0x10000 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.4.bin
+<pre><code class="language-powershell">esptool.py --chip esp32s3 --port COM26 write_flash 0x10000 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5.bin
 </code></pre>
 <p>Do not write the application-only image at offset <code>0x0</code>.</p>
 <h2 id="expected-boot-log">Expected boot log</h2>
