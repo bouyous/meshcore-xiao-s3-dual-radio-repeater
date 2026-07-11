@@ -39,6 +39,7 @@
     .step p { margin: 0 0 12px; font-size: 24px; line-height: 1.34; color: #334d68; }
     .mapping { margin-top: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 21px; color: #10233f; }
     .mapping span { padding: 8px 10px; background: #eef4f8; border-radius: 4px; }
+    .mapping .wide { grid-column: 1 / -1; }
     .warnings { margin-top: 28px; min-height: 225px; display: grid; grid-template-columns: 118px 1fr; align-items: center; gap: 26px; padding: 28px 34px; background: #fff5d8; border: 3px solid #d79b20; border-radius: 8px; }
     .warning-icon { font-size: 78px; text-align: center; }
     .warnings h2 { margin: 0 0 10px; font-size: 34px; color: #4b3500; }
@@ -67,8 +68,8 @@
     <div class="section-head"><h2>Assemblage en quatre étapes</h2><p>USB et batterie débranchés pendant toute soudure</p></div>
     <section class="steps">
       <article class="step">
-        <div class="step-media contain"><img src="09-battery-pads.png" alt="Pads batterie officiels du XIAO ESP32-S3"></div>
-        <div class="step-body"><div class="step-title"><span class="number">1</span><h3>Préparer la batterie avant l'empilage</h3></div><p>Souder le faisceau sous le XIAO avant que le second Wio ne masque les pads.</p><div class="mapping"><span><strong>BAT−</strong> : côté USB-C</span><span><strong>BAT+</strong> : côté opposé</span><span>LiPo rechargeable 3,7 V</span><span>Contrôle au multimètre</span></div></div>
+        <div class="step-media"><img src="04-backhaul-pin-labels.jpg" alt="Broches du second Wio-SX1262"></div>
+        <div class="step-body"><div class="step-title"><span class="number">1</span><h3>Repérer le câblage BACKHAUL</h3></div><p>Le second Wio utilise les broches latérales du XIAO, avec quatre commandes indépendantes et le bus SPI partagé.</p><div class="mapping"><span class="wide"><strong>J1 :</strong> DIO1→D0 · BUSY→D1 · RESET→D2 · NSS→D3</span><span class="wide"><strong>J2 :</strong> VIN→VIN · GND→GND · 3V3→3V3</span><span class="wide"><strong>SPI :</strong> MOSI→D10 · MISO→D9 · SCK→D8</span></div></div>
       </article>
       <article class="step">
         <div class="step-media"><img src="03-valley-radio-mounted.jpg" alt="Premier Wio-SX1262 monté sur le connecteur B2B"></div>
@@ -76,11 +77,11 @@
       </article>
       <article class="step green">
         <div class="step-media two"><img src="05-dual-stack-top.jpg" alt="Empilage des deux radios, vue supérieure"><img src="06-dual-stack-side.jpg" alt="Empilage des deux radios, vue latérale"></div>
-        <div class="step-body"><div class="step-title"><span class="number">3</span><h3>Ajouter le radio BACKHAUL</h3></div><p>Présenter le second Wio sur les rangées latérales. Vérifier tout l'alignement avant de souder.</p><div class="mapping"><span>D0 DIO1 · D1 BUSY</span><span>D2 RESET · D3 NSS</span><span>D8 SCK · D9 MISO</span><span>D10 MOSI · 3V3 · GND</span></div></div>
+        <div class="step-body"><div class="step-title"><span class="number">3</span><h3>Monter et souder le BACKHAUL</h3></div><p>Présenter le second Wio sur les deux rangées latérales, contrôler le parallélisme, puis souder une broche à chaque extrémité avant de terminer.</p><p>Inspecter chaque joint et vérifier qu'aucun pont ne relie deux broches.</p></div>
       </article>
       <article class="step green">
         <div class="step-media"><img src="02-parts-top.jpg" alt="Deux radios avec leurs antennes"></div>
-        <div class="step-body"><div class="step-title"><span class="number">4</span><h3>Brancher les deux antennes et contrôler</h3></div><p>Une antenne adaptée sur chaque prise U.FL avant tout essai TX. Inspecter les soudures et vérifier l'absence de court-circuit.</p><p><strong>Rôle BACKHAUL :</strong> antenne directionnelle vers le relais voisin.</p></div>
+        <div class="step-body"><div class="step-title"><span class="number">4</span><h3>Batterie, antennes et contrôles</h3></div><p>Avant l'empilage, souder <strong>BAT− côté USB-C</strong> et <strong>BAT+ côté opposé</strong>. Brancher ensuite une antenne adaptée sur chaque prise U.FL.</p><p>Vérifier les alimentations et l'indépendance des deux lignes NSS avant tout essai TX.</p></div>
       </article>
     </section>
     <section class="warnings"><div class="warning-icon">⚠</div><div><h2>Avant la première mise sous tension</h2><p>Vérifier VIN, GND et 3V3 ; confirmer que les deux NSS sont indépendants ; ne jamais émettre sans antenne ou charge adaptée ; isoler et soulager mécaniquement le faisceau batterie. La séparation RF des antennes doit être validée dans l'installation finale.</p></div></section>
@@ -101,8 +102,8 @@
     <div class="section-head"><h2>Assembly in four steps</h2><p>Disconnect USB and battery during all soldering</p></div>
     <section class="steps">
       <article class="step">
-        <div class="step-media contain"><img src="09-battery-pads.png" alt="Official XIAO ESP32-S3 battery pads"></div>
-        <div class="step-body"><div class="step-title"><span class="number">1</span><h3>Prepare the battery before stacking</h3></div><p>Solder the pigtail under the XIAO before the second Wio blocks access to the pads.</p><div class="mapping"><span><strong>BAT−</strong>: nearest USB-C</span><span><strong>BAT+</strong>: away from USB</span><span>Rechargeable 3.7 V LiPo</span><span>Check with a multimeter</span></div></div>
+        <div class="step-media"><img src="04-backhaul-pin-labels.jpg" alt="Second Wio-SX1262 side-header pins"></div>
+        <div class="step-body"><div class="step-title"><span class="number">1</span><h3>Identify the BACKHAUL wiring</h3></div><p>The second Wio uses the XIAO side headers, with four independent controls and the shared SPI bus.</p><div class="mapping"><span class="wide"><strong>J1:</strong> DIO1→D0 · BUSY→D1 · RESET→D2 · NSS→D3</span><span class="wide"><strong>J2:</strong> VIN→VIN · GND→GND · 3V3→3V3</span><span class="wide"><strong>SPI:</strong> MOSI→D10 · MISO→D9 · SCK→D8</span></div></div>
       </article>
       <article class="step">
         <div class="step-media"><img src="03-valley-radio-mounted.jpg" alt="First Wio-SX1262 fitted through the B2B connector"></div>
@@ -110,11 +111,11 @@
       </article>
       <article class="step green">
         <div class="step-media two"><img src="05-dual-stack-top.jpg" alt="Dual-radio stack, top view"><img src="06-dual-stack-side.jpg" alt="Dual-radio stack, side view"></div>
-        <div class="step-body"><div class="step-title"><span class="number">3</span><h3>Add the BACKHAUL radio</h3></div><p>Dry-fit the second Wio on the side headers. Check every row before soldering.</p><div class="mapping"><span>D0 DIO1 · D1 BUSY</span><span>D2 RESET · D3 NSS</span><span>D8 SCK · D9 MISO</span><span>D10 MOSI · 3V3 · GND</span></div></div>
+        <div class="step-body"><div class="step-title"><span class="number">3</span><h3>Fit and solder the BACKHAUL</h3></div><p>Place the second Wio on both side-header rows, check that the boards are parallel, then tack one pin at each end before completing the joints.</p><p>Inspect every joint and confirm that no solder bridge connects adjacent pins.</p></div>
       </article>
       <article class="step green">
         <div class="step-media"><img src="02-parts-top.jpg" alt="Two radios with their antennas"></div>
-        <div class="step-body"><div class="step-title"><span class="number">4</span><h3>Connect both antennas and inspect</h3></div><p>Fit a suitable antenna to each U.FL connector before any TX test. Inspect every joint and check for shorts.</p><p><strong>BACKHAUL role:</strong> directional antenna toward the neighbouring relay.</p></div>
+        <div class="step-body"><div class="step-title"><span class="number">4</span><h3>Battery, antennas and final checks</h3></div><p>Before stacking, solder <strong>BAT− nearest USB-C</strong> and <strong>BAT+ away from USB</strong>. Then connect a suitable antenna to each U.FL socket.</p><p>Verify the power rails and both independent NSS lines before any TX test.</p></div>
       </article>
     </section>
     <section class="warnings"><div class="warning-icon">⚠</div><div><h2>Before the first power-up</h2><p>Verify VIN, GND and 3V3; confirm that both NSS lines are independent; never transmit without a suitable antenna or dummy load; insulate and strain-relieve the battery pigtail. RF isolation between antennas must be validated in the final installation.</p></div></section>

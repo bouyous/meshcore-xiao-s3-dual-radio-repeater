@@ -351,6 +351,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cablage-essentiel-du-backhaul" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Câblage essentiel du BACKHAUL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-tout-debrancher" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1118,6 +1129,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cablage-essentiel-du-backhaul" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Câblage essentiel du BACKHAUL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#1-tout-debrancher" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1255,21 +1277,8 @@
 <li>multimètre, fer à souder, flux, loupe et matériel d'isolation.</li>
 </ul>
 <p><img alt="Matériel réel" src="../assets/assembly/01-parts-overview.jpg" /></p>
-<h2 id="1-tout-debrancher">1. Tout débrancher</h2>
-<p>Débrancher le câble USB, la batterie et toute autre alimentation. Ne jamais souder une carte alimentée. Installer une antenne ou une charge adaptée sur chaque Wio avant tout essai d'émission.</p>
-<h2 id="2-preparer-la-batterie-avant-lempilage">2. Préparer la batterie avant l'empilage</h2>
-<p>Les pads sont sous le XIAO et deviendront difficiles à atteindre après la pose du second Wio. Avec l'USB-C comme repère :</p>
-<ul>
-<li><code>BAT-</code> est le pad le plus proche de l'USB-C, à relier au fil noir ;</li>
-<li><code>BAT+</code> est le pad le plus éloigné de l'USB-C, à relier au fil rouge.</li>
-</ul>
-<p>Utiliser une batterie lithium rechargeable qualifiée de 3,7 V. Isoler les deux soudures et ajouter un soulagement de traction. Ne pas brancher la batterie sur <code>VIN</code>, <code>5V</code> ou <code>3V3</code>.</p>
-<p><img alt="Brochage officiel et pads batterie" src="../assets/assembly/08-official-pinout.png" /></p>
-<h2 id="3-monter-le-wio-valley">3. Monter le Wio <code>VALLEY</code></h2>
-<p>Le premier Wio-SX1262 utilise le connecteur 30 broches B2B prévu par Seeed. Orienter l'USB-C du XIAO vers le haut, aligner les deux connecteurs et presser verticalement sans torsion. Ce port est destiné à l'antenne omnidirectionnelle de la vallée.</p>
-<p><img alt="Premier Wio monté sur le connecteur B2B" src="../assets/assembly/03-valley-radio-mounted.jpg" /></p>
-<h2 id="4-presenter-le-wio-backhaul">4. Présenter le Wio <code>BACKHAUL</code></h2>
-<p>Avant toute soudure, emboîter à blanc le second Wio sur les broches latérales. Les deux rangées doivent rester parallèles et les cartes ne doivent pas se toucher en dehors des connecteurs prévus.</p>
+<h2 id="cablage-essentiel-du-backhaul">Câblage essentiel du <code>BACKHAUL</code></h2>
+<p>Le second Wio-SX1262 n'utilise pas le connecteur B2B 30 broches. Il se monte sur les deux rangées latérales du XIAO. Vérifier ce raccordement avant de présenter ou de souder la carte.</p>
 <p>Le côté <code>J1</code> fournit les commandes indépendantes :</p>
 <table>
 <thead>
@@ -1350,6 +1359,21 @@
 </tbody>
 </table>
 <p><img alt="Repères sérigraphiés du second Wio" src="../assets/assembly/04-backhaul-pin-labels.jpg" /></p>
+<h2 id="1-tout-debrancher">1. Tout débrancher</h2>
+<p>Débrancher le câble USB, la batterie et toute autre alimentation. Ne jamais souder une carte alimentée. Installer une antenne ou une charge adaptée sur chaque Wio avant tout essai d'émission.</p>
+<h2 id="2-preparer-la-batterie-avant-lempilage">2. Préparer la batterie avant l'empilage</h2>
+<p>Les pads sont sous le XIAO et deviendront difficiles à atteindre après la pose du second Wio. Avec l'USB-C comme repère :</p>
+<ul>
+<li><code>BAT-</code> est le pad le plus proche de l'USB-C, à relier au fil noir ;</li>
+<li><code>BAT+</code> est le pad le plus éloigné de l'USB-C, à relier au fil rouge.</li>
+</ul>
+<p>Utiliser une batterie lithium rechargeable qualifiée de 3,7 V. Isoler les deux soudures et ajouter un soulagement de traction. Ne pas brancher la batterie sur <code>VIN</code>, <code>5V</code> ou <code>3V3</code>.</p>
+<p><img alt="Pads batterie officiels" src="../assets/assembly/09-battery-pads.png" /></p>
+<h2 id="3-monter-le-wio-valley">3. Monter le Wio <code>VALLEY</code></h2>
+<p>Le premier Wio-SX1262 utilise le connecteur 30 broches B2B prévu par Seeed. Orienter l'USB-C du XIAO vers le haut, aligner les deux connecteurs et presser verticalement sans torsion. Ce port est destiné à l'antenne omnidirectionnelle de la vallée.</p>
+<p><img alt="Premier Wio monté sur le connecteur B2B" src="../assets/assembly/03-valley-radio-mounted.jpg" /></p>
+<h2 id="4-presenter-le-wio-backhaul">4. Présenter le Wio <code>BACKHAUL</code></h2>
+<p>En suivant le tableau ci-dessus, emboîter à blanc le second Wio sur les broches latérales. Les deux rangées doivent rester parallèles et les cartes ne doivent pas se toucher en dehors des connecteurs prévus. Contrôler encore le côté <code>J1</code> des commandes et le côté <code>J2</code> alimentation/SPI avant de souder.</p>
 <h2 id="5-souder-les-deux-rangees">5. Souder les deux rangées</h2>
 <p>Immobiliser les cartes parfaitement alignées. Souder d'abord une broche à chaque extrémité, contrôler l'équerrage, puis terminer les autres points. Une soudure doit être brillante, sans boule libre et sans pont entre deux broches.</p>
 <p><img alt="Empilage vu du dessus" src="../assets/assembly/05-dual-stack-top.jpg" /></p>
