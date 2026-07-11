@@ -35,6 +35,12 @@ The side-header mapping was checked against Seeed's published schematics and val
 
 Full instructions: [Wiring tutorial](docs/WIRING.md).
 
+## Photo assembly tutorial
+
+![Dual-radio assembly tutorial](docs/assets/assembly/assembly-tutorial-en.png)
+
+The [step-by-step assembly guide](docs/ASSEMBLY.md) uses photographs of the actual prototype to show battery preparation, the standard B2B radio, the side-header radio, antenna connections and pre-power checks. A [French version](docs/ASSEMBLY.fr.md) is also available.
+
 ## Firmware behavior
 
 - One MeshCore identity and one repeater advertisement.

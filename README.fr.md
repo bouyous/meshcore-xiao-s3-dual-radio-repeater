@@ -38,6 +38,12 @@ Le second Wio-SX1262, `BACKHAUL`, utilise ses propres lignes de contrôle :
 
 Le tableau complet, le sens des cartes et les vérifications au multimètre sont dans la [notice de câblage](docs/WIRING.md).
 
+## Tutoriel photo d'assemblage
+
+![Tutoriel d'assemblage du répéteur bi-radio](docs/assets/assembly/assembly-tutorial-fr.png)
+
+Le [guide d'assemblage détaillé](docs/ASSEMBLY.fr.md) utilise les photographies du prototype réel pour montrer la batterie, le radio B2B, le second radio sur les broches latérales, les antennes et les contrôles avant alimentation. La [version anglaise](docs/ASSEMBLY.md) est également disponible.
+
 ## Batterie : à souder avant le second Wio
 
 Les deux pastilles batterie sont sous le XIAO et deviendront difficiles d’accès une fois la carte `BACKHAUL` soudée. Il faut donc installer auparavant un petit faisceau isolé :

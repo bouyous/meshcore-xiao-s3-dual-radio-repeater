@@ -8,6 +8,8 @@
 
 ![Detailed wiring diagram](assets/dual-radio-wiring.svg)
 
+For a photographic walkthrough of the physical assembly, see the [English photo tutorial](ASSEMBLY.md) or the [French version](ASSEMBLY.fr.md).
+
 The diagram uses a top view with the XIAO USB-C connector pointing upward. On the tested assembly, the Wio antenna ends point away from the USB end.
 
 ## Shared bus
