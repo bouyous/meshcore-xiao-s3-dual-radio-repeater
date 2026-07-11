@@ -6,6 +6,7 @@
 - Transmit on the port opposite the ingress first, then on the ingress-side port.
 - Include both physical transmissions in airtime estimation.
 - Validate simultaneous dual-radio reception, duplicate coalescing and symmetric live-network forwarding.
+- Validate an optional 220 uF supply capacitor through ten full-power serialized dual-radio TX cycles under USB power.
 - Document that MeshCore clients may count multiple acknowledgement events for the single dual-radio identity.
 
 ## v1.16.0-dual.3 - 2026-07-10

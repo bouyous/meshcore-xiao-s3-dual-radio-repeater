@@ -107,6 +107,21 @@ The two zero-hop packets were received but correctly not forwarded. Every packet
 
 The client UI may report multiple "heard by" events for this node while listing only one repeater identity. This is expected when the same logical packet and its acknowledgements traverse both physical RF ports under one MeshCore public key.
 
+## 3.3 V rail load test with optional capacitor
+
+An optional used `220 uF / 10 V` electrolytic capacitor was installed between `3V3` and `GND` on the accessible side-header Wio-SX1262. The capacitor is not required by the design; this test checks that the value is tolerated and that it can provide additional transient decoupling.
+
+With the XIAO powered by USB, both radios enabled at `22 dBm` and the inter-TX guard set to `10 ms`, ten zero-hop advertisements were issued one at a time. Each logical advertisement produced two serialized physical transmissions:
+
+```text
+VALLEY:        tx=10, errors=0
+BACKHAUL:      tx=10, errors=0
+stats-packets: sent=20, direct_tx=10, recv_errors=0
+Firmware after test: v1.16.0-dual.4
+```
+
+No spontaneous restart, radio error or asymmetric TX count was observed. A deliberately over-fast command burst filled the MeshCore outbound queue and accepted fewer transmissions; this was a software queue limit, not evidence of supply failure. The test validates USB-powered operation but does not yet validate operation from a nearly discharged Li-ion cell. An oscilloscope measurement of the 3.3 V rail remains the correct way to quantify short voltage dips.
+
 ## Firmware hashes
 
 ```text

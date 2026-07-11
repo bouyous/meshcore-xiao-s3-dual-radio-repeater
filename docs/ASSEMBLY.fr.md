@@ -56,6 +56,12 @@ Les pads sont sous le XIAO et deviendront difficiles à atteindre après la pose
 
 Utiliser une batterie lithium rechargeable qualifiée de 3,7 V. Isoler les deux soudures et ajouter un soulagement de traction. Ne pas brancher la batterie sur `VIN`, `5V` ou `3V3`.
 
+### Condensateur réservoir 3,3 V facultatif
+
+Le prototype fonctionne correctement sans condensateur supplémentaire. Pour mieux absorber les transitoires courts d’alimentation, il est possible d’ajouter un condensateur électrolytique faible ESR d’environ `100 à 220 µF`, prévu pour `6,3 V` ou davantage, entre `3V3` et `GND` sur le Wio-SX1262 accessible par les broches latérales. Respecter la polarité : borne positive sur `3V3`, borne négative sur `GND`.
+
+Les broches latérales et le connecteur 30 broches partagent le même rail 3,3 V régulé : ce seul condensateur aide donc le XIAO et les deux radios. Garder ses connexions courtes. Il n’augmente pas la puissance RF et ne remplace pas une batterie ou un régulateur correctement dimensionné ; il réduit seulement les creux très brefs. Débrancher l’USB et la batterie avant toute soudure.
+
 ![Pads batterie officiels](assets/assembly/09-battery-pads.png)
 
 ## 3. Monter le Wio `VALLEY`

@@ -125,6 +125,7 @@ Validated on the bench on 10 and 11 July 2026:
 - six of six packets received in each direction during the initial raw-radio tests;
 - local MeshCore advertisement produces one `VALLEY` TX followed by one `BACKHAUL` TX;
 - live MeshCore flood traffic produced three logical forwards and exactly three serialized transmissions on each RF port, with no reported radio errors;
+- an optional `220 uF / 10 V` capacitor on the shared 3.3 V rail passed ten full-power dual-TX cycles under USB power (`10 + 10` physical transmissions, zero radio errors and no spontaneous restart);
 - per-port enable, power, guard and statistics commands;
 - settings survive reboot;
 - original MeshCore repeater identity survives firmware updates.

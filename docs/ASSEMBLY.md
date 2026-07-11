@@ -56,6 +56,12 @@ The battery pads are under the XIAO and become difficult to reach after the seco
 
 Use a qualified rechargeable 3.7 V lithium battery. Insulate both joints and add strain relief. Do not connect the battery to `VIN`, `5V` or `3V3`.
 
+### Optional 3.3 V reservoir capacitor
+
+The prototype operated correctly without an additional capacitor. For extra tolerance to short supply transients, an optional low-ESR electrolytic capacitor of approximately `100 to 220 uF`, rated `6.3 V` or higher, may be connected between `3V3` and `GND` on the accessible side-header Wio-SX1262. Observe polarity: capacitor positive to `3V3`, negative to `GND`.
+
+The side headers and the 30-pin connector share the same regulated 3.3 V rail, so this single capacitor supports the XIAO and both radios. Keep its leads short. It does not increase RF power or replace a correctly sized battery and regulator; it only reduces brief voltage dips. Disconnect USB and the battery before soldering.
+
 ![Official battery pads](assets/assembly/09-battery-pads.png)
 
 ## 3. Fit the `VALLEY` Wio
