@@ -69,7 +69,7 @@
   <text x="95" y="600" class="node">Forwarding rules</text>
   <text x="95" y="643" class="label">1. Receive on both enabled ports while idle.</text>
   <text x="95" y="680" class="label">2. Same frame on both ports: keep the better SNR/RSSI copy.</text>
-  <text x="95" y="717" class="label">3. VALLEY ingress exits BACKHAUL; BACKHAUL ingress exits VALLEY.</text>
+  <text x="95" y="717" class="label">3. Forwarded packets exit both ports sequentially; opposite ingress transmits first.</text>
   <text x="95" y="754" class="label">4. Local packets are transmitted once per enabled port.</text>
   <text x="95" y="791" class="label">5. CRC, ingress cache and MeshCore packet hashes stop duplicates.</text>
 

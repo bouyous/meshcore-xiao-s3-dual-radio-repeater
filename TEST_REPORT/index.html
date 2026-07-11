@@ -552,6 +552,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#live-meshcore-traffic-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live MeshCore traffic validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#firmware-hashes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1173,6 +1184,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#live-meshcore-traffic-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live MeshCore traffic validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#firmware-hashes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1220,7 +1242,7 @@
 
 
 <h1 id="bench-test-report">Bench test report</h1>
-<p>Date: 10 July 2026</p>
+<p>Date: 10-11 July 2026</p>
 <h2 id="hardware-under-test">Hardware under test</h2>
 <ul>
 <li>Seeed Studio XIAO ESP32-S3</li>
@@ -1233,12 +1255,12 @@
 <li>MeshCore tag: <code>repeater-v1.16.0</code></li>
 <li>Upstream commit: <code>07a3ca9e05b0ab23b878200b2c44b04e08131972</code></li>
 <li>Variant: <code>Xiao_S3_WIO_dual_repeater</code></li>
-<li>Firmware version string: <code>v1.16.0-dual.3</code></li>
+<li>Firmware version string: <code>v1.16.0-dual.4</code></li>
 <li>Final RF profile read from <code>COM26</code>: <code>869.6179809 MHz</code>, <code>62.5 kHz</code> bandwidth, spreading factor <code>8</code>, coding rate <code>8</code></li>
 </ul>
 <h2 id="build-result">Build result</h2>
 <pre><code class="language-text">RAM:   59,792 / 327,680 bytes (18.2%)
-Flash: 1,136,605 / 3,342,336 bytes (34.0%)
+Flash: 1,136,585 / 3,342,336 bytes (34.0%)
 PlatformIO result: SUCCESS
 </code></pre>
 <h2 id="raw-radio-validation">Raw-radio validation</h2>
@@ -1297,7 +1319,7 @@ Repeater ID: CDDE90DD24319EC45A46D6FFCEA4E715C4A9D1667D6386004CA19E9BCF187443
 After reboot:  VALLEY=21, BACKHAUL=20, guard=60
 Result: PASS
 </code></pre>
-<p>The final <code>dual.3</code> state was restored to <code>22/22 dBm</code>, both enabled, guard <code>10 ms</code>.</p>
+<p>The final <code>dual.4</code> state was restored to <code>22/22 dBm</code>, both enabled, guard <code>10 ms</code>.</p>
 <h2 id="sequential-tx-validation">Sequential TX validation</h2>
 <p>After clearing statistics and issuing <code>advert.zerohop</code>, the completed result was:</p>
 <pre><code class="language-text">stats-packets: sent=2, direct_tx=1
@@ -1305,9 +1327,22 @@ VALLEY:   tx=1
 BACKHAUL: tx=1
 </code></pre>
 <p>This confirms one logical MeshCore advertisement and two serialized physical transmissions.</p>
+<h2 id="live-meshcore-traffic-validation">Live MeshCore traffic validation</h2>
+<p>A companion node named <code>Test</code> transmitted at 2 dBm while the nearby roof repeater was moved temporarily to 916 MHz. The dual repeater remained on its normal test channel. A first isolated test produced:</p>
+<pre><code class="language-text">VALLEY:   rx=3, tx=2, errors=0
+BACKHAUL: rx=3, tx=2, errors=0
+MeshCore: recv=3, sent=4, flood_rx=2, flood_tx=2
+</code></pre>
+<p>A second mixed test sent eight operations from two clients: two messages per client, one zero-hop alert per client and one network alert per client. The result was:</p>
+<pre><code class="language-text">VALLEY:   rx=8, tx=3, errors=0
+BACKHAUL: rx=8, tx=3, errors=0
+MeshCore: recv=8, sent=6, flood_rx=6, direct_rx=2, flood_tx=3
+</code></pre>
+<p>The two zero-hop packets were received but correctly not forwarded. Every packet selected by MeshCore for forwarding generated one serialized TX on each physical port. Duplicate receptions were coalesced and no radio receive errors were reported. After adding and allowing the <code>fr</code> transport region, traffic from the second client was also forwarded.</p>
+<p>The client UI may report multiple "heard by" events for this node while listing only one repeater identity. This is expected when the same logical packet and its acknowledgements traverse both physical RF ports under one MeshCore public key.</p>
 <h2 id="firmware-hashes">Firmware hashes</h2>
-<pre><code class="language-text">797BCA16DD0BA0395AB5975A9CD0511E79568704BFE53B5B626DD128BBC59D25  application image
-DA1F4FEEAA07F6088A9C76532A90E880E9493632E9151D517BDB790593348A20  merged image
+<pre><code class="language-text">8D8B7270B7C216B3AD5F1D9A1D5284E66269D7E0C7A88BA94859D96C536CEB0A  application image
+425A3B93B0C1DE1CAF691FDBA3740F9BE1C93FA419CE67B1125330B8FD554762  merged image
 </code></pre>
 <p>See <a href="../firmware/SHA256SUMS.txt"><code>../firmware/SHA256SUMS.txt</code></a>.</p>
 <h2 id="not-yet-validated">Not yet validated</h2>
