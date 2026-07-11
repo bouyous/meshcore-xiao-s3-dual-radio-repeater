@@ -408,6 +408,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Prepare the battery before stacking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-33-v-reservoir-capacitor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional 3.3 V reservoir capacitor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1159,6 +1176,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Prepare the battery before stacking">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-33-v-reservoir-capacitor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional 3.3 V reservoir capacitor
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1368,6 +1402,9 @@
 <li><code>BAT+</code> is the pad away from USB-C and connects to the red lead.</li>
 </ul>
 <p>Use a qualified rechargeable 3.7 V lithium battery. Insulate both joints and add strain relief. Do not connect the battery to <code>VIN</code>, <code>5V</code> or <code>3V3</code>.</p>
+<h3 id="optional-33-v-reservoir-capacitor">Optional 3.3 V reservoir capacitor</h3>
+<p>The prototype operated correctly without an additional capacitor. For extra tolerance to short supply transients, an optional low-ESR electrolytic capacitor of approximately <code>100 to 220 uF</code>, rated <code>6.3 V</code> or higher, may be connected between <code>3V3</code> and <code>GND</code> on the accessible side-header Wio-SX1262. Observe polarity: capacitor positive to <code>3V3</code>, negative to <code>GND</code>.</p>
+<p>The side headers and the 30-pin connector share the same regulated 3.3 V rail, so this single capacitor supports the XIAO and both radios. Keep its leads short. It does not increase RF power or replace a correctly sized battery and regulator; it only reduces brief voltage dips. Disconnect USB and the battery before soldering.</p>
 <p><img alt="Official battery pads" src="../assets/assembly/09-battery-pads.png" /></p>
 <h2 id="3-fit-the-valley-wio">3. Fit the <code>VALLEY</code> Wio</h2>
 <p>The first Wio-SX1262 uses Seeed's standard 30-pin B2B connector. Point the XIAO USB-C end upward, align both connectors and press vertically without twisting. This port is intended for the valley omnidirectional antenna.</p>

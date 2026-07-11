@@ -381,6 +381,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Préparer la batterie avant l&#39;empilage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#condensateur-reservoir-33-v-facultatif" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Condensateur réservoir 3,3 V facultatif
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1159,6 +1176,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Préparer la batterie avant l&#39;empilage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#condensateur-reservoir-33-v-facultatif" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Condensateur réservoir 3,3 V facultatif
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1368,6 +1402,9 @@
 <li><code>BAT+</code> est le pad le plus éloigné de l'USB-C, à relier au fil rouge.</li>
 </ul>
 <p>Utiliser une batterie lithium rechargeable qualifiée de 3,7 V. Isoler les deux soudures et ajouter un soulagement de traction. Ne pas brancher la batterie sur <code>VIN</code>, <code>5V</code> ou <code>3V3</code>.</p>
+<h3 id="condensateur-reservoir-33-v-facultatif">Condensateur réservoir 3,3 V facultatif</h3>
+<p>Le prototype fonctionne correctement sans condensateur supplémentaire. Pour mieux absorber les transitoires courts d’alimentation, il est possible d’ajouter un condensateur électrolytique faible ESR d’environ <code>100 à 220 µF</code>, prévu pour <code>6,3 V</code> ou davantage, entre <code>3V3</code> et <code>GND</code> sur le Wio-SX1262 accessible par les broches latérales. Respecter la polarité : borne positive sur <code>3V3</code>, borne négative sur <code>GND</code>.</p>
+<p>Les broches latérales et le connecteur 30 broches partagent le même rail 3,3 V régulé : ce seul condensateur aide donc le XIAO et les deux radios. Garder ses connexions courtes. Il n’augmente pas la puissance RF et ne remplace pas une batterie ou un régulateur correctement dimensionné ; il réduit seulement les creux très brefs. Débrancher l’USB et la batterie avant toute soudure.</p>
 <p><img alt="Pads batterie officiels" src="../assets/assembly/09-battery-pads.png" /></p>
 <h2 id="3-monter-le-wio-valley">3. Monter le Wio <code>VALLEY</code></h2>
 <p>Le premier Wio-SX1262 utilise le connecteur 30 broches B2B prévu par Seeed. Orienter l'USB-C du XIAO vers le haut, aligner les deux connecteurs et presser verticalement sans torsion. Ce port est destiné à l'antenne omnidirectionnelle de la vallée.</p>
