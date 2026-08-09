@@ -101,15 +101,15 @@ Replace `COM26` with the port assigned by Windows.
 
 Two images are provided in [`firmware/`](firmware/):
 
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.1.bin`: application image for offset `0x10000`.
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.1-merged.bin`: complete image for offset `0x0`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2.bin`: application image for offset `0x10000`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin`: complete image for offset `0x0`.
 
 Verify hashes against [`firmware/SHA256SUMS.txt`](firmware/SHA256SUMS.txt).
 
 Example for the merged image:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.1-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin
 ```
 
 Read [FLASHING.md](docs/FLASHING.md) before using the command, especially when choosing between the merged and application-only images.

@@ -34,7 +34,9 @@ EnvironmentSensorManager sensors;
 
 bool radio_init() {
   fallback_clock.begin();
+#ifndef DISABLE_RTC_DISCOVERY
   rtc_clock.begin(Wire);
+#endif
   pinMode(21, INPUT);
   pinMode(48, OUTPUT);
 

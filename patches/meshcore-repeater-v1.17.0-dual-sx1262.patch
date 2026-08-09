@@ -2,67 +2,35 @@ diff --git a/examples/simple_repeater/MyMesh.cpp b/examples/simple_repeater/MyMe
 index c93ba1a4..63b9c642 100644
 --- a/examples/simple_repeater/MyMesh.cpp
 +++ b/examples/simple_repeater/MyMesh.cpp
-@@ -957,6 +957,9 @@ void MyMesh::begin(FILESYSTEM *fs) {
- 
-   radio_driver.setParams(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
-   radio_driver.setTxPower(_prefs.tx_power_dbm);
+@@ -959,0 +960,3 @@ void MyMesh::begin(FILESYSTEM *fs) {
 +#ifdef DUAL_SX1262_REPEATER
 +  radio_driver.loadConfig();
 +#endif
- 
-   radio_driver.setRxBoostedGainMode(_prefs.rx_boosted_gain);
-   MESH_DEBUG_PRINTLN("RX Boosted Gain Mode: %s",
-@@ -1053,7 +1056,11 @@ void MyMesh::dumpLogFile() {
- }
- 
- void MyMesh::setTxPower(int8_t power_dbm) {
+@@ -1055,0 +1059,3 @@ void MyMesh::setTxPower(int8_t power_dbm) {
 +#ifdef DUAL_SX1262_REPEATER
 +  radio_driver.setCommonTxPower(power_dbm);
 +#else
-   radio_driver.setTxPower(power_dbm);
+@@ -1056,0 +1063 @@ void MyMesh::setTxPower(int8_t power_dbm) {
 +#endif
- }
- 
- bool MyMesh::setRxBoostedGain(bool enable) {
-@@ -1173,6 +1180,7 @@ void MyMesh::clearStats() {
- }
- 
- void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply) {
+@@ -1175,0 +1183 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
 +  size_t reply_capacity = 160;
-   if (region_load_active) {
-     if (StrHelper::isBlank(command)) {  // empty/blank line, signal to terminate 'load' operation
-       region_map = temp_map;  // copy over the temp instance as new current map
-@@ -1212,9 +1220,16 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
-   if (strlen(command) > 4 && command[2] == '|') { // optional prefix (for companion radio CLI)
-     memcpy(reply, command, 3);                    // reflect the prefix back
-     reply += 3;
+@@ -1214,0 +1223 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
 +    reply_capacity -= 3;
-     command += 3;
-   }
- 
+@@ -1217,0 +1227,6 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
 +#ifdef DUAL_SX1262_REPEATER
 +  if (radio_driver.handleCommand(command, reply, reply_capacity)) {
 +    return;
 +  }
 +#endif
 +
-   // handle ACL related commands
-   if (memcmp(command, "setperm ", 8) == 0) {   // format:  setperm {pubkey-hex} {permissions-int8}
-     char* hex = &command[8];
 diff --git a/examples/simple_repeater/main.cpp b/examples/simple_repeater/main.cpp
 index a714db68..110052fe 100644
 --- a/examples/simple_repeater/main.cpp
 +++ b/examples/simple_repeater/main.cpp
-@@ -102,7 +102,9 @@ void setup() {
-   ethernet_command[0] = 0;
- #endif
- 
+@@ -104,0 +105 @@ void setup() {
 +#ifndef DISABLE_SENSOR_DISCOVERY
-   sensors.begin();
+@@ -105,0 +107 @@ void setup() {
 +#endif
- 
-   the_mesh.begin(fs);
- 
 diff --git a/src/helpers/radiolib/DualSX1262Wrapper.cpp b/src/helpers/radiolib/DualSX1262Wrapper.cpp
 new file mode 100644
 index 00000000..418e6f9c
@@ -1341,25 +1309,17 @@ diff --git a/variants/xiao_s3_wio/XiaoS3WIOBoard.h b/variants/xiao_s3_wio/XiaoS3
 index 7ae06a35..a99b923f 100644
 --- a/variants/xiao_s3_wio/XiaoS3WIOBoard.h
 +++ b/variants/xiao_s3_wio/XiaoS3WIOBoard.h
-@@ -8,6 +8,10 @@ public:
-   XiaoS3WIOBoard() { }
- 
-   const char* getManufacturerName() const override {
+@@ -10,0 +11,3 @@ public:
 +#ifdef DUAL_SX1262_REPEATER
 +    return "Xiao S3 WIO Dual SX1262";
 +#else
-     return "Xiao S3 WIO";
+@@ -11,0 +15 @@ public:
 +#endif
-   }
- };
 diff --git a/variants/xiao_s3_wio/platformio.ini b/variants/xiao_s3_wio/platformio.ini
-index 293a13c1..44d2ad6f 100644
+index 293a13c1..54f384d9 100644
 --- a/variants/xiao_s3_wio/platformio.ini
 +++ b/variants/xiao_s3_wio/platformio.ini
-@@ -53,6 +53,33 @@ lib_deps =
-   ${Xiao_S3_WIO.lib_deps}
-   ${esp32_ota.lib_deps}
- 
+@@ -55,0 +56,28 @@ lib_deps =
 +[env:Xiao_S3_WIO_dual_repeater]
 +extends = Xiao_S3_WIO
 +build_src_filter = ${Xiao_S3_WIO.build_src_filter}
@@ -1371,7 +1331,8 @@ index 293a13c1..44d2ad6f 100644
 +  -D DUAL_SX1262_LOCAL_TX_BOTH=1
 +  -D DUAL_SX1262_FORWARD_TX_BOTH=1
 +  -D DISABLE_SENSOR_DISCOVERY=1
-+  -D FIRMWARE_VERSION='"v1.17.0-dual.1"'
++  -D DISABLE_RTC_DISCOVERY=1
++  -D FIRMWARE_VERSION='"v1.17.0-dual.2"'
 +  -D P_LORA2_DIO_1=1
 +  -D P_LORA2_BUSY=2
 +  -D P_LORA2_RESET=3
@@ -1387,17 +1348,11 @@ index 293a13c1..44d2ad6f 100644
 +  ${Xiao_S3_WIO.lib_deps}
 +  ${esp32_ota.lib_deps}
 +
- ; [env:Xiao_S3_WIO_repeater_bridge_rs232]
- ; extends = Xiao_S3_WIO
- ; build_src_filter = ${Xiao_S3_WIO.build_src_filter}
 diff --git a/variants/xiao_s3_wio/target.cpp b/variants/xiao_s3_wio/target.cpp
-index 8a975959..9f74d2c0 100644
+index 8a975959..ebae5d6d 100644
 --- a/variants/xiao_s3_wio/target.cpp
 +++ b/variants/xiao_s3_wio/target.cpp
-@@ -3,6 +3,15 @@
- 
- XiaoS3WIOBoard board;
- 
+@@ -5,0 +6,9 @@ XiaoS3WIOBoard board;
 +#ifdef DUAL_SX1262_REPEATER
 +
 +static SPIClass spi;
@@ -1407,52 +1362,30 @@ index 8a975959..9f74d2c0 100644
 +
 +#else
 +
- #if defined(P_LORA_SCLK)
-   static SPIClass spi;
-   RADIO_CLASS radio = new Module(P_LORA_NSS, P_LORA_DIO_1, P_LORA_RESET, P_LORA_BUSY, spi);
-@@ -12,6 +21,8 @@ XiaoS3WIOBoard board;
- 
- WRAPPER_CLASS radio_driver(radio, board);
- 
+@@ -14,0 +24,2 @@ WRAPPER_CLASS radio_driver(radio, board);
 +#endif
 +
- ESP32RTCClock fallback_clock;
- AutoDiscoverRTCClock rtc_clock(fallback_clock);
- EnvironmentSensorManager sensors;
-@@ -29,14 +40,22 @@ bool radio_init() {
- 
-   #if defined(P_LORA_SCLK)
-   spi.begin(P_LORA_SCLK, P_LORA_MISO, P_LORA_MOSI);
+@@ -25,0 +37 @@ bool radio_init() {
++#ifndef DISABLE_RTC_DISCOVERY
+@@ -26,0 +39 @@ bool radio_init() {
++#endif
+@@ -31,0 +45,3 @@ bool radio_init() {
 +  #ifdef DUAL_SX1262_REPEATER
 +  return radio_driver.stdInit(&spi);
 +  #else
-   return radio.std_init(&spi);
+@@ -32,0 +49 @@ bool radio_init() {
 +  #endif
- #else
-   return radio.std_init();
- #endif
- }
- 
- mesh::LocalIdentity radio_new_identity() {
+@@ -38,0 +56,3 @@ mesh::LocalIdentity radio_new_identity() {
 +#ifdef DUAL_SX1262_REPEATER
 +  DualSX1262NoiseListener rng(radio_driver);
 +#else
-   RadioNoiseListener rng(radio);
+@@ -39,0 +60 @@ mesh::LocalIdentity radio_new_identity() {
 +#endif
-   return mesh::LocalIdentity(&rng);  // create new random identity
- }
- 
 diff --git a/variants/xiao_s3_wio/target.h b/variants/xiao_s3_wio/target.h
 index 29c5f281..44d7e3fe 100644
 --- a/variants/xiao_s3_wio/target.h
 +++ b/variants/xiao_s3_wio/target.h
-@@ -5,6 +5,9 @@
- #include <helpers/radiolib/RadioLibWrappers.h>
- #include <helpers/ESP32Board.h>
- #include <helpers/radiolib/CustomSX1262Wrapper.h>
+@@ -7,0 +8,3 @@
 +#ifdef DUAL_SX1262_REPEATER
 +  #include <helpers/radiolib/DualSX1262Wrapper.h>
 +#endif
- #include <helpers/AutoDiscoverRTCClock.h>
- #include <helpers/sensors/EnvironmentSensorManager.h>
- #ifdef DISPLAY_CLASS

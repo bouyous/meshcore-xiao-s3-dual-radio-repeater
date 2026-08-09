@@ -100,7 +100,7 @@ pio run -e Xiao_S3_WIO_dual_repeater -t upload --upload-port COM26
 Avec l’image complète fournie :
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.1-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin
 ```
 
 Remplacer `COM26` si Windows attribue un autre port. Ne jamais écrire l’image d’application seule à l’adresse `0x0` ; elle doit être écrite à `0x10000`. La procédure complète et le mode récupération sont dans [FLASHING.md](docs/FLASHING.md).
@@ -120,7 +120,7 @@ Le prototype a été compilé, flashé et testé sur `COM26` le 10 juillet 2026 
 - condensateur facultatif `220 µF / 10 V` validé sur le rail 3,3 V partagé pendant dix cycles bi-radio à `22 dBm` sous alimentation USB, soit vingt émissions physiques sans erreur ni redémarrage spontané.
 - démarrage `dual.5` mesuré à 1,78 seconde jusqu’à la réponse CLI, après suppression du balayage des capteurs I²C externes absents sur ce montage fixe.
 
-La version validée sur le matériel est `v1.16.0-dual.5`. La nouvelle version `v1.17.0-dual.1` est compilée sur la base officielle MeshCore 1.17 et doit encore passer la validation matérielle. La configuration finale relevée reste : deux ports activés, `22 dBm` sur chacun, garde `10 ms`, fréquence `869.6179809 MHz`, bande passante `62.5 kHz`, SF `8`, CR `8`.
+La version validée sur le matériel est `v1.16.0-dual.5`. La nouvelle version `v1.17.0-dual.2` est compilée sur la base officielle MeshCore 1.17 et passe actuellement la validation matérielle. La configuration finale relevée reste : deux ports activés, `22 dBm` sur chacun, garde `10 ms`, fréquence `869.6179809 MHz`, bande passante `62.5 kHz`, SF `8`, CR `8`.
 
 Certains clients MeshCore comptent les réceptions ou accusés physiques plutôt que les identités uniques. Le compteur « entendu par » peut donc augmenter plusieurs fois pour le dual-radio, alors que la liste affiche correctement une seule identité de répéteur.
 
