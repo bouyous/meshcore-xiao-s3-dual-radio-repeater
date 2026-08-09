@@ -1,5 +1,27 @@
 # Bench test report
 
+## MeshCore 1.17 port
+
+Date: 9 August 2026
+
+- MeshCore tag: `repeater-v1.17.0`
+- Upstream commit: `727fc051`
+- Firmware version: `v1.17.0-dual.1`
+- PlatformIO result: `SUCCESS`
+- RAM: `60,000 / 327,680 bytes (18.3%)`
+- Flash: `1,143,161 / 3,342,336 bytes (34.2%)`
+- Complete merged ESP32-S3 image generated successfully for offset `0x0`
+
+The dual wrapper now implements the MeshCore 1.17 RX boosted-gain result,
+per-radio hardware CAD handling, and the SX1262 preamble/payload reception
+timeouts calculated from the active SF, bandwidth, coding rate, and preamble.
+Sequential transmission on both ports and the fast-boot behavior are preserved.
+
+This section records build validation only. The tests below document the full
+hardware and over-the-air validation previously completed with
+`v1.16.0-dual.5`; the 1.17 image still needs the same COM26 bench test before
+deployment.
+
 Date: 10-11 July 2026
 
 ## Hardware under test

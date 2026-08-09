@@ -63,6 +63,7 @@ DualSX1262Wrapper::DualSX1262Wrapper(CustomSX1262& valley,
       _common_tx_power_dbm(LORA_TX_POWER),
       _common_power_pending(false),
       _threshold(0),
+      _cad_enabled(false),
       _pending_rx_len(0),
       _pending_rx_port(PortNone),
       _pending_rx_rssi(0),
@@ -104,6 +105,12 @@ bool DualSX1262Wrapper::initOne(Port port) {
   uint8_t cr = 5;
 #endif
 
+#ifdef SX126X_USE_REGULATOR_LDO
+  constexpr bool useRegulatorLDO = SX126X_USE_REGULATOR_LDO;
+#else
+  constexpr bool useRegulatorLDO = false;
+#endif
+
   CustomSX1262* radio = _slots[port].radio;
   int status = radio->begin(LORA_FREQ,
                             LORA_BW,
@@ -112,7 +119,8 @@ bool DualSX1262Wrapper::initOne(Port port) {
                             RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
                             LORA_TX_POWER,
                             16,
-                            tcxo);
+                            tcxo,
+                            useRegulatorLDO);
   if (status == RADIOLIB_ERR_SPI_CMD_FAILED || status == RADIOLIB_ERR_SPI_CMD_INVALID) {
     tcxo = 0.0f;
     status = radio->begin(LORA_FREQ,
@@ -122,7 +130,8 @@ bool DualSX1262Wrapper::initOne(Port port) {
                           RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
                           LORA_TX_POWER,
                           16,
-                          tcxo);
+                          tcxo,
+                          useRegulatorLDO);
   }
   if (status != RADIOLIB_ERR_NONE) {
     Serial.print("ERROR: ");
@@ -175,6 +184,7 @@ void DualSX1262Wrapper::begin() {
   _last_rssi = 0;
   _last_snr = 0;
   _threshold = 0;
+  _cad_enabled = false;
   _pending_rx_len = 0;
   _pending_rx_port = PortNone;
   valley_flag = false;
@@ -195,6 +205,11 @@ void DualSX1262Wrapper::begin() {
   }
 
   updatePreamble(_slots[PortValley].radio->spreadingFactor);
+#ifdef LORA_CR
+  updateReceiveTimeouts(_slots[PortValley].radio->spreadingFactor, LORA_BW, LORA_CR);
+#else
+  updateReceiveTimeouts(_slots[PortValley].radio->spreadingFactor, LORA_BW, 5);
+#endif
   startRecvAll();
 }
 
@@ -565,16 +580,25 @@ bool DualSX1262Wrapper::isReceivingPacket(Port port) const {
 }
 
 bool DualSX1262Wrapper::isChannelActive(Port port) {
-  if (_threshold == 0) {
-    return false;
-  }
-
   RadioSlot& slot = _slots[port];
-  if (!slot.enabled || slot.noise_floor == 0) {
+  if (!slot.enabled) {
     return false;
   }
 
-  return slot.radio->getRSSI(false) > slot.noise_floor + _threshold;
+  if (_threshold != 0 && slot.noise_floor != 0 &&
+      slot.radio->getRSSI(false) > slot.noise_floor + _threshold) {
+    return true;
+  }
+
+  if (_cad_enabled) {
+    int16_t result = slot.radio->scanChannel();
+    clearFlag(port);
+    slot.state = StateIdle;
+    startRecv(port);
+    return result != RADIOLIB_CHANNEL_FREE;
+  }
+
+  return false;
 }
 
 bool DualSX1262Wrapper::isReceiving() {
@@ -592,12 +616,35 @@ void DualSX1262Wrapper::setParams(float freq, float bw, uint8_t sf, uint8_t cr) 
     _slots[i].radio->setCodingRate(cr);
   }
   updatePreamble(sf);
+  updateReceiveTimeouts(sf, bw, cr);
 }
 
 void DualSX1262Wrapper::updatePreamble(uint8_t sf) {
   uint16_t preamble = preambleLengthForSF(sf);
   _slots[PortValley].radio->setPreambleLength(preamble);
   _slots[PortBackhaul].radio->setPreambleLength(preamble);
+}
+
+void DualSX1262Wrapper::updateReceiveTimeouts(uint8_t sf, float bw, uint8_t cr) {
+  const uint8_t preamble_symbols = preambleLengthForSF(sf);
+  const uint32_t symbol_us = ((uint32_t)10000 << sf) / (bw * 10);
+  const uint32_t sf_coeff_x4 = (sf == 5 || sf == 6) ? 25 : 17;
+  const uint32_t preamble_us =
+      (((preamble_symbols + 8) * 4 + sf_coeff_x4) * symbol_us) / 4;
+
+  uint32_t total_us = _slots[PortValley].radio->getTimeOnAir(MAX_TRANS_UNIT);
+  uint32_t payload_us = total_us > preamble_us ? total_us - preamble_us
+                                               : 4000000UL - preamble_us;
+  if (cr >= 5 && cr < 8) {
+    payload_us = (payload_us * 8) / cr;
+  }
+
+  const uint32_t preamble_ms = (preamble_us + 999) / 1000;
+  const uint32_t payload_ms = (payload_us + 999) / 1000;
+  for (int i = 0; i < 2; i++) {
+    _slots[i].radio->setPreambleMillis(preamble_ms);
+    _slots[i].radio->setMaxPayloadMillis(payload_ms);
+  }
 }
 
 uint32_t DualSX1262Wrapper::getRngSeed() {
@@ -855,9 +902,10 @@ void DualSX1262Wrapper::resetStats() {
   }
 }
 
-void DualSX1262Wrapper::setRxBoostedGainMode(bool en) {
-  _slots[PortValley].radio->setRxBoostedGainMode(en);
-  _slots[PortBackhaul].radio->setRxBoostedGainMode(en);
+bool DualSX1262Wrapper::setRxBoostedGainMode(bool en) {
+  bool valley_ok = _slots[PortValley].radio->setRxBoostedGainMode(en) == RADIOLIB_ERR_NONE;
+  bool backhaul_ok = _slots[PortBackhaul].radio->setRxBoostedGainMode(en) == RADIOLIB_ERR_NONE;
+  return valley_ok && backhaul_ok;
 }
 
 bool DualSX1262Wrapper::getRxBoostedGainMode() const {

@@ -21,13 +21,13 @@ Replace `COM26` with the current Windows port.
 The merged image contains the bootloader, partition table, boot application and firmware. Flash it at offset `0x0`:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.1-merged.bin
 ```
 
 The non-merged application image belongs at offset `0x10000`:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x10000 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x10000 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.1.bin
 ```
 
 Do not write the application-only image at offset `0x0`.
