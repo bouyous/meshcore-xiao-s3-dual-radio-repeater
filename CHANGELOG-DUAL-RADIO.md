@@ -7,7 +7,7 @@
 - retained the ESP32 internal fallback clock;
 - removed the roughly nine-second pre-radio startup delay and associated I2C
   timeout seen during the first `dual.1` hardware flash;
-- documented that the existing ESP32 OTA path uses the local `MeshCore OTA`
+- documented that the existing ESP32 OTA path uses the local `MeshCore-OTA`
   Wi-Fi access point; official MeshCore Bluetooth DFU applies to nRF52 boards.
 
 ## v1.17.0-dual.1 - 2026-08-09

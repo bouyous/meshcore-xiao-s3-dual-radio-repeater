@@ -38,7 +38,7 @@ authenticated local or remote repeater CLI session, run:
 start ota
 ```
 
-The repeater starts a Wi-Fi access point named `MeshCore OTA`. Connect a phone
+The repeater starts a Wi-Fi access point named `MeshCore-OTA`. Connect a phone
 or computer to that access point and open `http://192.168.4.1/update` to upload
 the application `.bin` file. Stay close to the repeater and keep its power
 stable until it restarts.
