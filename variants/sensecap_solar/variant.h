@@ -39,13 +39,34 @@
 // Analog pins
 #define BATTERY_PIN             (16)    // Read the BAT voltage.
 #define AREF_VOLTAGE            (3.0F)
-#define ADC_MULTIPLIER          (3.0F) // 1M, 512k divider bridge
+#define ADC_MULTIPLIER          (3.004F) // Official 1M/499k divider, (1000+499)/499
 #define ADC_RESOLUTION          (12)
 
 // nRF52 power management settings
 #define PWRMGT_VOLTAGE_BOOTLOCK (3300) // Won't boot below this voltage (mV)
 #define PWRMGT_LPCOMP_AIN       (7)    // AIN7 = P0.31 = BATTERY_PIN
-#define PWRMGT_LPCOMP_REFSEL    (2)    // 3/8 VDD (~3.38-3.71V)
+#define PWRMGT_LPCOMP_REFSEL    (2)    // 3/8 VDD; nominal rising wake ~3.77V
+
+// Runtime battery protection. Values are compile-time overrides so field
+// testing can tune policy without changing the implementation.
+#ifndef PWR_LOW_WARNING_MV
+#define PWR_LOW_WARNING_MV       (3500)
+#endif
+#ifndef PWR_LOW_HYSTERESIS_MV
+#define PWR_LOW_HYSTERESIS_MV    (50)
+#endif
+#ifndef PWR_SHUTDOWN_MV
+#define PWR_SHUTDOWN_MV          (3300)
+#endif
+#ifndef PWR_CRITICAL_CLEAR_MV
+#define PWR_CRITICAL_CLEAR_MV    (3350)
+#endif
+#ifndef PWR_SHUTDOWN_DELAY_SEC
+#define PWR_SHUTDOWN_DELAY_SEC   (600)
+#endif
+#ifndef PWR_SAMPLE_INTERVAL_SEC
+#define PWR_SAMPLE_INTERVAL_SEC  (30)
+#endif
 
 // Serial interfaces
 #define PIN_SERIAL1_RX          (7)
@@ -76,6 +97,26 @@
 #define PIN_GPS_RX              PIN_SERIAL1_TX
 #define PIN_GPS_STANDBY         (0)
 #define GPS_EN                  (18)
+
+// Daily GPS policy for a fixed repeater. The first one-hour window begins at
+// boot, then repeats every 24 hours. Battery economy/critical states override
+// the schedule and keep the GPS off.
+#ifndef GPS_SCHEDULE_PERIOD_SEC
+#define GPS_SCHEDULE_PERIOD_SEC  (24UL * 60UL * 60UL)
+#endif
+#ifndef GPS_SCHEDULE_WINDOW_SEC
+#define GPS_SCHEDULE_WINDOW_SEC  (60UL * 60UL)
+#endif
+#define GPS_SCHEDULE_FORCE_ENABLE 1
+
+#ifdef PWR_TEST_STANDBY_WAKE_MV
+#ifndef PWR_TEST_STANDBY_SAMPLE_SEC
+#define PWR_TEST_STANDBY_SAMPLE_SEC 30
+#endif
+#ifndef PWR_TEST_STANDBY_CONFIRM_SAMPLES
+#define PWR_TEST_STANDBY_CONFIRM_SAMPLES 3
+#endif
+#endif
 
 // QSPI Pins
 #define PIN_QSPI_SCK            (21)

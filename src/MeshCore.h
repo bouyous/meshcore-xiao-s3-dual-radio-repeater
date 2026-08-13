@@ -44,6 +44,17 @@ namespace mesh {
 
 class MainBoard {
 public:
+  struct PowerStatus {
+    const char* state;
+    const char* wake_threshold;
+    uint16_t battery_mv;
+    uint16_t warning_mv;
+    uint16_t shutdown_mv;
+    uint32_t low_seconds;
+    uint32_t shutdown_delay_seconds;
+    bool power_saving;
+  };
+
   virtual uint16_t getBattMilliVolts() = 0;
   virtual float getMCUTemperature() { return NAN; }
   virtual bool setAdcMultiplier(float multiplier) { return false; };
@@ -79,6 +90,15 @@ public:
   virtual const char* getResetReasonString(uint32_t reason) { return "Not available"; }
   virtual uint8_t getShutdownReason() const { return 0; }
   virtual const char* getShutdownReasonString(uint8_t reason) { return "Not available"; }
+
+  // Runtime battery protection. Unsupported boards keep the no-op defaults.
+  virtual void servicePowerManagement() { }
+  virtual bool getPowerStatus(PowerStatus& status) const { (void)status; return false; }
+  virtual bool getBatteryTemperature(float& temperature_c) const {
+    (void)temperature_c;
+    return false;
+  }
+  virtual const char* getChargeTemperatureGuardStatus() const { return "unavailable"; }
 };
 
 /**

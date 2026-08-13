@@ -3,6 +3,11 @@
 #include <MeshCore.h>
 #include <Arduino.h>
 #include <helpers/NRF52Board.h>
+#include <helpers/PowerStateMachine.h>
+
+#if defined(P1_EVENT_LOG)
+class P1EventJournal;
+#endif
 
 class SenseCapSolarBoard : public NRF52BoardDCDC {
 protected:
@@ -10,9 +15,36 @@ protected:
   void initiateShutdown(uint8_t reason) override;
 #endif
 
+  mesh::PowerStateMachine power_state_machine;
+  uint32_t next_power_sample_ms = 0;
+  bool peripherals_shutdown = false;
+#if defined(P1_EVENT_LOG)
+  P1EventJournal* event_journal = nullptr;
+#endif
+
+  uint16_t sampleBatteryMilliVolts();
+  void configureBatterySense(bool enabled);
+  #ifdef PWR_TEST_STANDBY_WAKE_MV
+  void enterTestRecoveryStandby(uint8_t reason);
+  #endif
+
 public:
-  SenseCapSolarBoard() : NRF52Board("SENSECAP_SOLAR_OTA") {}
+  SenseCapSolarBoard();
   void begin();
+  void servicePowerManagement() override;
+#if defined(P1_EVENT_LOG)
+  void setEventJournal(P1EventJournal* journal) { event_journal = journal; }
+#endif
+  bool getPowerStatus(mesh::MainBoard::PowerStatus& status) const override;
+  bool getBatteryTemperature(float& temperature_c) const override {
+    // The pack NTC is connected to the autonomous CN3165 TEMP input, but no
+    // documented carrier trace exposes that node to an nRF52840 ADC input.
+    (void)temperature_c;
+    return false;
+  }
+  const char* getChargeTemperatureGuardStatus() const override {
+    return "CN3165 NTC autonomous; battery NTC not routed to MCU";
+  }
 
 #if defined(P_LORA_TX_LED)
   void onBeforeTransmit() override {
@@ -24,13 +56,7 @@ public:
 #endif
 
   uint16_t getBattMilliVolts() override {
-    digitalWrite(VBAT_ENABLE, LOW);
-    int adcvalue = 0;
-    analogReadResolution(12);
-    analogReference(AR_INTERNAL_3_0);
-    delay(10);
-    adcvalue = analogRead(BATTERY_PIN);
-    return (adcvalue * ADC_MULTIPLIER * AREF_VOLTAGE) / 4.096;
+    return sampleBatteryMilliVolts();
   }
 
   const char* getManufacturerName() const override {

@@ -5,6 +5,9 @@
 #include <helpers/sensors/MicroNMEALocationProvider.h>
 #endif
 SenseCapSolarBoard board;
+#if defined(P1_EVENT_LOG)
+P1EventJournal p1_event_journal;
+#endif
 
 RADIO_CLASS radio = new Module(P_LORA_NSS, P_LORA_DIO_1, P_LORA_RESET, P_LORA_BUSY, SPI);
 

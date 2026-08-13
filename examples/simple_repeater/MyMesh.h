@@ -81,6 +81,9 @@ struct NeighbourInfo {
 #define FIRMWARE_ROLE "repeater"
 
 #define PACKET_LOG_FILE  "/packet_log"
+#if defined(P1_EVENT_LOG)
+#define P1_GPS_CONTINUOUS_FILE  "/p1_gps_continuous"
+#endif
 
 class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   FILESYSTEM* _fs;
@@ -129,6 +132,10 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   mesh::Packet* createSelfAdvert();
 
   File openAppend(const char* fname);
+#if defined(P1_EVENT_LOG)
+  bool persistGpsContinuous(bool enabled);
+  bool gpsContinuousPersisted() const;
+#endif
   bool isLooped(const mesh::Packet* packet, const uint8_t max_counters[]);
 
 protected:
@@ -163,6 +170,12 @@ protected:
 
 #if ENV_INCLUDE_GPS == 1
   void applyGpsPrefs() {
+  #ifdef GPS_SCHEDULE_FORCE_ENABLE
+    if (!_prefs.gps_enabled) {
+      _prefs.gps_enabled = 1;
+      savePrefs();
+    }
+  #endif
     sensors.setSettingValue("gps", _prefs.gps_enabled?"1":"0");
   }
 #endif

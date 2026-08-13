@@ -393,6 +393,36 @@ File MyMesh::openAppend(const char *fname) {
 #endif
 }
 
+#if defined(P1_EVENT_LOG)
+bool MyMesh::gpsContinuousPersisted() const {
+  return _fs && _fs->exists(P1_GPS_CONTINUOUS_FILE);
+}
+
+bool MyMesh::persistGpsContinuous(bool enabled) {
+  if (!_fs) return false;
+  if (!enabled) {
+    if (_fs->exists(P1_GPS_CONTINUOUS_FILE) &&
+        !_fs->remove(P1_GPS_CONTINUOUS_FILE)) {
+      return false;
+    }
+    return !_fs->exists(P1_GPS_CONTINUOUS_FILE);
+  }
+
+  if (_fs->exists(P1_GPS_CONTINUOUS_FILE) &&
+      !_fs->remove(P1_GPS_CONTINUOUS_FILE)) {
+    return false;
+  }
+  File file = _fs->open(P1_GPS_CONTINUOUS_FILE, FILE_O_WRITE);
+  const uint8_t marker = 1;
+  const bool written = file && file.write(&marker, 1) == 1;
+  if (file) {
+    file.flush();
+    file.close();
+  }
+  return written && _fs->exists(P1_GPS_CONTINUOUS_FILE);
+}
+#endif
+
 static uint8_t max_loop_minimal[] =  { 0, /* 1-byte */  4, /* 2-byte */  2, /* 3-byte */  1 };
 static uint8_t max_loop_moderate[] = { 0, /* 1-byte */  2, /* 2-byte */  1, /* 3-byte */  1 };
 static uint8_t max_loop_strict[] =   { 0, /* 1-byte */  1, /* 2-byte */  1, /* 3-byte */  1 };
@@ -994,6 +1024,12 @@ void MyMesh::begin(FILESYSTEM *fs) {
 
 #if ENV_INCLUDE_GPS == 1
   applyGpsPrefs();
+#if defined(P1_EVENT_LOG)
+  if (gpsContinuousPersisted()) {
+    char restored[96];
+    sensors.handleGpsOverrideCommand("on", restored, sizeof(restored));
+  }
+#endif
 #endif
 }
 
@@ -1247,6 +1283,51 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
 
 #ifdef DUAL_SX1262_REPEATER
   if (radio_driver.handleCommand(command, reply, reply_capacity)) {
+    return;
+  }
+#endif
+
+#if defined(P1_EVENT_LOG)
+  if (sender_timestamp == 0 && strncmp(command, "gps override", 12) == 0 &&
+      (command[12] == 0 || command[12] == ' ')) {
+    const char* argument = command + 12;
+    while (*argument == ' ') argument++;
+    const bool set_continuous = strcmp(argument, "on") == 0;
+    const bool set_daily = strcmp(argument, "off") == 0;
+    char* duration_end = nullptr;
+    const unsigned long duration_hours = strtoul(argument, &duration_end, 10);
+    const bool set_timed = duration_end != argument &&
+                           strcmp(duration_end, "h") == 0 &&
+                           duration_hours >= 1 && duration_hours <= 168;
+
+    if ((set_continuous || set_daily || set_timed) &&
+        !persistGpsContinuous(set_continuous)) {
+      strcpy(reply, "ERR - seasonal GPS setting not saved");
+      return;
+    }
+
+    if (!sensors.handleGpsOverrideCommand(argument, reply, 160)) {
+      strcpy(reply, "ERR - GPS override unsupported");
+    } else if (set_continuous) {
+      strncat(reply, "; saved summer mode", 159 - strlen(reply));
+    } else if (set_daily) {
+      strncat(reply, "; saved winter mode", 159 - strlen(reply));
+    } else if (strcmp(argument, "status") == 0 || *argument == 0) {
+      strncat(reply, gpsContinuousPersisted() ? "; summer mode saved"
+                                              : "; winter mode saved",
+              159 - strlen(reply));
+    }
+    return;
+  } else if (sender_timestamp == 0 && strcmp(command, "eventlog clear") == 0) {
+    strcpy(reply, p1_event_journal.clear() ? "OK - event log cleared"
+                                           : "ERR - event log clear failed");
+    return;
+  } else if (sender_timestamp == 0 && strcmp(command, "eventlog status") == 0) {
+    p1_event_journal.formatStatus(reply, 160);
+    return;
+  } else if (sender_timestamp == 0 && strcmp(command, "eventlog") == 0) {
+    p1_event_journal.dump(Serial);
+    strcpy(reply, "EOF");
     return;
   }
 #endif

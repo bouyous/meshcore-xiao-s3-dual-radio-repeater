@@ -2,6 +2,8 @@
 
 #include <Mesh.h>
 #include <helpers/SensorManager.h>
+#include <helpers/GpsSchedule.h>
+#include <helpers/GpsOverride.h>
 #include <helpers/sensors/LocationProvider.h>
 
 class EnvironmentSensorManager : public SensorManager {
@@ -21,7 +23,31 @@ protected:
 
   bool     gps_detected = false;
   bool     gps_active = false;
+  bool     gps_power_save_mode = false;
+  bool     gps_resume_after_power_save = false;
   uint32_t gps_update_interval_sec = 1;
+  SensorRuntimeEventSink* event_sink = nullptr;
+  void emitRuntimeEvent(SensorRuntimeEventType type, uint32_t epoch = 0,
+                        uint32_t duration_ms = 0, int32_t value = 0) {
+    if (!event_sink) return;
+    const SensorRuntimeEvent event = {type, epoch, duration_ms, value};
+    event_sink->onSensorRuntimeEvent(event);
+  }
+
+  #if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  mesh::GpsSchedule gps_schedule = mesh::GpsSchedule(
+      (uint32_t)GPS_SCHEDULE_PERIOD_SEC * 1000U,
+      (uint32_t)GPS_SCHEDULE_WINDOW_SEC * 1000U);
+  mesh::GpsOverride gps_override;
+  bool gps_schedule_window_open = false;
+  bool gps_fix_advert_sent = false;
+  bool gps_advert_pending = false;
+  bool gps_window_had_fix = false;
+  bool gps_time_sync_reported = false;
+  uint32_t gps_window_started_ms = 0;
+  uint32_t gps_powered_since_ms = 0;
+  void updateGpsSchedule(uint32_t now_ms);
+  #endif
 
   #if ENV_INCLUDE_GPS
   LocationProvider* _location;
@@ -50,4 +76,10 @@ public:
   const char* getSettingName(int i) const override;
   const char* getSettingValue(int i) const override;
   bool setSettingValue(const char* name, const char* value) override;
+  void setPowerSaveMode(bool enabled) override;
+  void setEventSink(SensorRuntimeEventSink* sink) override { event_sink = sink; }
+  bool consumeFreshLocation() override;
+  bool getGpsScheduleStatus(char* status, size_t max_len) const override;
+  bool handleGpsOverrideCommand(const char* argument, char* reply,
+                                size_t max_len) override;
 };

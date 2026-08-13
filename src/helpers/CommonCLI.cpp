@@ -973,6 +973,48 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, char* command, char* rep
 #else
     strcpy(reply, "ERROR: Power management not supported");
 #endif
+  } else if (memcmp(config, "power.state", 11) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %s", status.state);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.vbat", 10) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %u mV", status.battery_mv);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.lowtime", 13) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %lu s", (unsigned long)status.low_seconds);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.wakethreshold", 19) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %s", status.wake_threshold);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.status", 12) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) {
+      sprintf(reply, "> %u mV; %s; low %lu/%lu s; off %u mV",
+        status.battery_mv, status.state, (unsigned long)status.low_seconds,
+        (unsigned long)status.shutdown_delay_seconds, status.shutdown_mv);
+    } else {
+      strcpy(reply, "ERROR: Runtime power management not supported");
+    }
+  } else if (memcmp(config, "power.temp", 10) == 0) {
+    float battery_temperature_c = 0.0f;
+    if (_board->getBatteryTemperature(battery_temperature_c)) {
+      snprintf(reply, 160, "> battery %.1f C", battery_temperature_c);
+    } else {
+      snprintf(reply, 160, "> battery NTC unavailable to MCU; MCU %.1f C",
+               _board->getMCUTemperature());
+    }
+  } else if (memcmp(config, "power.chargeguard", 17) == 0) {
+    snprintf(reply, 160, "> %s", _board->getChargeTemperatureGuardStatus());
+  } else if (memcmp(config, "gps.schedule", 12) == 0) {
+    char status[136];
+    if (_sensors->getGpsScheduleStatus(status, sizeof(status))) {
+      snprintf(reply, 160, "> %s", status);
+    } else {
+      strcpy(reply, "ERROR: GPS schedule not supported");
+    }
   } else if (memcmp(config, "extra.sf", 8) == 0) {
     char* tmp = reply;
     for (int i = 0; i < 3 && _prefs->extra_sf[i] != 0; i++) {
