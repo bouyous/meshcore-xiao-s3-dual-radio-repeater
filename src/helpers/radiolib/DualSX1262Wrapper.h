@@ -30,6 +30,7 @@ public:
 
   int getNoiseFloor() const override;
   void triggerNoiseFloorCalibrate(int threshold) override;
+  void setCADEnabled(bool enable) override { _cad_enabled = enable; }
   void resetAGC() override;
   bool isInRecvMode() const override;
   bool isReceiving() override;
@@ -48,7 +49,7 @@ public:
   uint32_t getPacketsSent() const { return _n_sent; }
   void resetStats();
 
-  void setRxBoostedGainMode(bool en);
+  bool setRxBoostedGainMode(bool en);
   bool getRxBoostedGainMode() const;
 
   Port getLastRxPort() const { return _last_rx_port; }
@@ -112,6 +113,7 @@ private:
   bool _common_power_pending;
 
   int16_t _threshold;
+  bool _cad_enabled;
   RecentIngress _recent[12];
 
   uint8_t _scratch_rx[MAX_TRANS_UNIT];
@@ -153,6 +155,7 @@ private:
 
   static uint16_t preambleLengthForSF(uint8_t sf) { return sf <= 8 ? 32 : 16; }
   void updatePreamble(uint8_t sf);
+  void updateReceiveTimeouts(uint8_t sf, float bw, uint8_t cr);
   float packetScoreInt(float snr, int sf, int packet_len);
   void sampleNoiseFloor(RadioSlot& slot);
 };

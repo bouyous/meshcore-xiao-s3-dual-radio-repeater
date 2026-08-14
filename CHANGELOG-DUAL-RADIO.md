@@ -1,5 +1,24 @@
 # Dual-radio changelog
 
+## v1.17.0-dual.2 - 2026-08-09
+
+- disabled probing for absent external I2C RTC chips in the fixed dual-radio
+  XIAO assembly;
+- retained the ESP32 internal fallback clock;
+- removed the roughly nine-second pre-radio startup delay and associated I2C
+  timeout seen during the first `dual.1` hardware flash;
+- documented that the existing ESP32 OTA path uses the local `MeshCore-OTA`
+  Wi-Fi access point; official MeshCore Bluetooth DFU applies to nRF52 boards.
+
+## v1.17.0-dual.1 - 2026-08-09
+
+- rebased the dual-SX1262 repeater on official MeshCore `repeater-v1.17.0`;
+- adopted the 1.17 SX1262 preamble and payload receive timeouts on both radios;
+- added MeshCore 1.17 hardware CAD support to both valley and backhaul ports;
+- restored the 1.17 boolean RX boosted-gain result across both radios;
+- preserved sequential dual-port transmission, persistent per-port configuration,
+  the 10 ms inter-radio guard, French region handling, and fast boot.
+
 ## v1.16.0-dual.5 - 2026-07-11
 
 - Skip external I2C sensor discovery on the fixed dual-radio repeater hardware.

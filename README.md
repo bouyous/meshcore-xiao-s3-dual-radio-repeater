@@ -9,7 +9,7 @@ The node keeps one MeshCore identity and therefore appears as one repeater. The 
 - `VALLEY`: Wio-SX1262 connected through the standard 30-pin board-to-board connector, intended for an omnidirectional local-coverage antenna.
 - `BACKHAUL`: second Wio-SX1262 connected through the XIAO side headers, intended for a directional point-to-point antenna.
 
-This is a bench-tested proof of concept based on MeshCore `repeater-v1.16.0` commit `07a3ca9`. It is not an official MeshCore release.
+This is an experimental proof of concept based on MeshCore `repeater-v1.17.0` commit `727fc051`. The dual-radio behavior was bench-tested on 1.16 and ported to the new 1.17 radio API; the 1.17 build still requires hardware validation. It is not an official MeshCore release.
 
 ![Concept illustration of the dual-radio summit repeater](docs/assets/dual-radio-repeater-overview.png)
 
@@ -101,15 +101,15 @@ Replace `COM26` with the port assigned by Windows.
 
 Two images are provided in [`firmware/`](firmware/):
 
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5.bin`: application image for offset `0x10000`.
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin`: complete image for offset `0x0`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2.bin`: application image for offset `0x10000`.
+- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin`: complete image for offset `0x0`.
 
 Verify hashes against [`firmware/SHA256SUMS.txt`](firmware/SHA256SUMS.txt).
 
 Example for the merged image:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin
 ```
 
 Read [FLASHING.md](docs/FLASHING.md) before using the command, especially when choosing between the merged and application-only images.
@@ -133,7 +133,7 @@ Validated on the bench on 10 and 11 July 2026:
 
 See the exact results and remaining gaps in [TEST_REPORT.md](docs/TEST_REPORT.md).
 
-For maintainers who want to review only the delta from upstream, use [`patches/meshcore-repeater-v1.16.0-dual-sx1262.patch`](patches/meshcore-repeater-v1.16.0-dual-sx1262.patch).
+For maintainers who want to review only the delta from upstream, use [`patches/meshcore-repeater-v1.17.0-dual-sx1262.patch`](patches/meshcore-repeater-v1.17.0-dual-sx1262.patch).
 
 ## Important limitations
 

@@ -21,13 +21,31 @@ Replace `COM26` with the current Windows port.
 The merged image contains the bootloader, partition table, boot application and firmware. Flash it at offset `0x0`:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5-merged.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin
 ```
 
 The non-merged application image belongs at offset `0x10000`:
 
 ```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x10000 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.16.0-dual.5.bin
+esptool.py --chip esp32s3 --port COM26 write_flash 0x10000 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2.bin
+
+## Future updates without USB
+
+The XIAO ESP32-S3 repeater includes MeshCore's ESP32 OTA support. From an
+authenticated local or remote repeater CLI session, run:
+
+```text
+start ota
+```
+
+The repeater starts a Wi-Fi access point named `MeshCore-OTA`. Connect a phone
+or computer to that access point and open `http://192.168.4.1/update` to upload
+the application `.bin` file. Stay close to the repeater and keep its power
+stable until it restarts.
+
+MeshCore's Bluetooth DFU procedure is for nRF52 targets. Repeater firmware on
+ESP32 does not expose the companion BLE interface, so this XIAO uses Wi-Fi OTA
+instead of Bluetooth DFU.
 ```
 
 Do not write the application-only image at offset `0x0`.

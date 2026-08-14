@@ -1,5 +1,44 @@
 # Bench test report
 
+## MeshCore 1.17 port
+
+Date: 9 August 2026
+
+- MeshCore tag: `repeater-v1.17.0`
+- Upstream commit: `727fc051`
+- Firmware version: `v1.17.0-dual.1`
+- PlatformIO result: `SUCCESS`
+- RAM: `60,000 / 327,680 bytes (18.3%)`
+- Flash: `1,143,161 / 3,342,336 bytes (34.2%)`
+- Complete merged ESP32-S3 image generated successfully for offset `0x0`
+
+The dual wrapper now implements the MeshCore 1.17 RX boosted-gain result,
+per-radio hardware CAD handling, and the SX1262 preamble/payload reception
+timeouts calculated from the active SF, bandwidth, coding rate, and preamble.
+Sequential transmission on both ports and the fast-boot behavior are preserved.
+
+The initial `dual.1` section recorded build validation. Hardware validation was
+then completed on COM26 with the corrected `dual.2` image described below.
+The older sections retain the wider over-the-air tests performed with
+`v1.16.0-dual.5`.
+
+### Hardware startup correction (`v1.17.0-dual.2`)
+
+The first `dual.1` hardware flash preserved identity and initialized both
+SX1262 radios, but probing absent external RTC chips delayed radio startup by
+about nine seconds and produced ESP32 I2C error 263. `dual.2` disables those
+probes only for the fixed dual-radio variant and keeps the ESP32 fallback
+clock. Build result: RAM 60,000 bytes (18.3%), flash 1,142,589 bytes (34.2%).
+
+COM26 validation after flashing `dual.2`:
+
+- radio initialization and identity output completed in 1.58 seconds;
+- identity remained `CDDE90DD24319EC45A46D6FFCEA4E715C4A9D1667D6386004CA19E9BCF187443`;
+- both ports remained enabled at 22 dBm with a 10 ms guard;
+- hardware CAD remained off, following the MeshCore 1.17 default;
+- three paced zero-hop advertisements completed as three physical TX on
+  `VALLEY` and three on `BACKHAUL`, with zero radio errors.
+
 Date: 10-11 July 2026
 
 ## Hardware under test
