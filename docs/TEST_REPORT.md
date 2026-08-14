@@ -6,7 +6,7 @@ Date: 9 August 2026
 
 - MeshCore tag: `repeater-v1.17.0`
 - Upstream commit: `727fc051`
-- Firmware version: `v1.17.0-dual.1`
+- Current validated firmware version: `v1.17.0-dual.2`
 - PlatformIO result: `SUCCESS`
 - RAM: `60,000 / 327,680 bytes (18.3%)`
 - Flash: `1,143,161 / 3,342,336 bytes (34.2%)`

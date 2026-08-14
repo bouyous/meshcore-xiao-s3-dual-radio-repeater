@@ -9,7 +9,7 @@ The node keeps one MeshCore identity and therefore appears as one repeater. The 
 - `VALLEY`: Wio-SX1262 connected through the standard 30-pin board-to-board connector, intended for an omnidirectional local-coverage antenna.
 - `BACKHAUL`: second Wio-SX1262 connected through the XIAO side headers, intended for a directional point-to-point antenna.
 
-This is an experimental proof of concept based on MeshCore `repeater-v1.17.0` commit `727fc051`. The dual-radio behavior was bench-tested on 1.16 and ported to the new 1.17 radio API; the 1.17 build still requires hardware validation. It is not an official MeshCore release.
+This is a hardware-tested custom build based on MeshCore `repeater-v1.17.0` commit `727fc051`. Version `v1.17.0-dual.2` was validated on the XIAO ESP32-S3 dual-SX1262 assembly while preserving its MeshCore identity and per-port configuration. It is not an official MeshCore release.
 
 ![Concept illustration of the dual-radio summit repeater](docs/assets/dual-radio-repeater-overview.png)
 
