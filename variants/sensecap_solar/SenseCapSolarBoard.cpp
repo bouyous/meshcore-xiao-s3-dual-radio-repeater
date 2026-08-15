@@ -69,8 +69,13 @@ const PowerMgtConfig power_config = {
 };
 
 void SenseCapSolarBoard::initiateShutdown(uint8_t reason) {
+  // On a remotely installed solar repeater, recovery has priority over an
+  // indefinite software power-off.  A field unit reached the USER path from
+  // a false button indication; keeping LPCOMP armed prevents that condition
+  // from stranding the node until somebody connects USB.
   bool enable_lpcomp = (reason == SHUTDOWN_REASON_LOW_VOLTAGE ||
-                        reason == SHUTDOWN_REASON_BOOT_PROTECT);
+                        reason == SHUTDOWN_REASON_BOOT_PROTECT ||
+                        reason == SHUTDOWN_REASON_USER);
 
   // This also covers boot protection, which occurs before radio_init(). The
   // generic nRF52 shutdown path deliberately initializes SPI as needed before
@@ -149,6 +154,12 @@ void SenseCapSolarBoard::begin() {
 #elif defined(PIN_BUTTON1)
   pinMode(PIN_BUTTON1, INPUT_PULLUP);
 #endif
+#ifdef PIN_BUTTON2
+  // The carrier exposes two button nets in the variant.  Keep the second one
+  // in a defined state even though recovery builds do not use either button
+  // to request shutdown.
+  pinMode(PIN_BUTTON2, INPUT_PULLUP);
+#endif
 
 #if defined(PIN_WIRE_SDA) && defined(PIN_WIRE_SCL)
   Wire.setPins(PIN_WIRE_SDA, PIN_WIRE_SCL);
@@ -219,6 +230,14 @@ void SenseCapSolarBoard::enterTestRecoveryStandby(uint8_t reason) {
 void SenseCapSolarBoard::servicePowerManagement() {
 #ifdef NRF52_POWER_MANAGEMENT
   const uint32_t now = millis();
+#if defined(P1_POWER_ALERTS)
+  if (low_voltage_shutdown_pending) {
+    if ((int32_t)(now - low_voltage_shutdown_at_ms) >= 0) {
+      initiateShutdown(SHUTDOWN_REASON_LOW_VOLTAGE);
+    }
+    return;
+  }
+#endif
   if ((int32_t)(now - next_power_sample_ms) < 0) return;
   next_power_sample_ms = now + (uint32_t)PWR_SAMPLE_INTERVAL_SEC * 1000U;
 
@@ -239,7 +258,15 @@ void SenseCapSolarBoard::servicePowerManagement() {
   if (action == mesh::PowerAction::SHUTDOWN) {
     MESH_DEBUG_PRINTLN("PWRMGT: Runtime low voltage persisted for %lu s at %u mV",
       (unsigned long)power_state_machine.criticalDurationSeconds(now), battery_mv);
+#if defined(P1_POWER_ALERTS)
+    // Keep the radio alive briefly so MyMesh can deliver the final encrypted
+    // alert (and one retry) before peripherals are quiesced for SYSTEMOFF.
+    low_voltage_shutdown_pending = true;
+    low_voltage_shutdown_at_ms =
+        now + (uint32_t)P1_ALERT_SHUTDOWN_GRACE_SEC * 1000U;
+#else
     initiateShutdown(SHUTDOWN_REASON_LOW_VOLTAGE);
+#endif
   }
 #endif
 }

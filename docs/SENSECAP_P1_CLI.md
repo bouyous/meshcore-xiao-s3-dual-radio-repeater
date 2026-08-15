@@ -1,14 +1,16 @@
-# Guide CLI — SenseCAP Solar Node P1 recovery.4
+# Guide CLI — SenseCAP Solar Node P1 recovery.6-guarded
 
-Ce guide couvre les deux images recovery.4 :
+Ce guide couvre les deux images expérimentales recovery.6 :
 
-- `v1.17.0-p1-recovery.4-gpsoverride` : profil terrain SYSTEMOFF/LPCOMP ;
-- `v1.17.0-p1-recovery.4-test345-gpsoverride` : profil de test avec réveil
+- `v1.17.0-p1-recovery.6-guarded` : profil terrain SYSTEMOFF/LPCOMP ;
+- `v1.17.0-p1-recovery.6-test345-guarded` : profil de test avec réveil
   simulé à 3,45 V en SYSTEM ON basse consommation.
 
 Les exemples supposent une console USB série. Les commandes ajoutées
 `gps override ...` et `eventlog ...` sont volontairement limitées à cette
-console locale. Envoyer une commande par ligne.
+console locale. Les commandes `alert ...` fonctionnent aussi depuis une CLI
+MeshCore distante déjà authentifiée comme administrateur. Envoyer une commande
+par ligne.
 
 ## Contrôle rapide recommandé
 
@@ -23,12 +25,93 @@ get pwrmgt.bootreason
 get pwrmgt.bootmv
 get gps.schedule
 gps override status
+alert status
 eventlog status
 ```
 
-`ver` doit contenir `recovery.4`. Le profil test indique un seuil de réveil
+`ver` doit contenir `recovery.6`. Le profil test indique un seuil de réveil
 ADC de 3450 mV ; le profil terrain indique `3/8 VDD x 3.004` et nécessite une
 mesure réelle de son seuil LPCOMP.
+
+## Profil réseau validé sur l'unité de test
+
+Le bloc ci-dessous correspond au paramétrage effectivement appliqué, sauvegardé
+et relu sur le P1 de test. Envoyer **une commande par ligne** et attendre sa
+réponse avant de poursuivre. Ne pas redémarrer pendant une écriture de
+préférences ou avant la réponse `OK` de `region save`.
+
+```text
+set advert.interval 60
+set flood.advert.interval 24
+set flood.max.advert 6
+set flood.max.unscoped 5
+set path.hash.mode 1
+set multi.acks 1
+set loop.detect minimal
+set dutycycle 10
+set agc.reset.interval 4
+set repeat on
+region def eu fr fr-pac fr-05 fr-73
+region default fr
+region home fr
+region save
+reboot
+```
+
+Après le retour du port série, vérifier la persistance avec :
+
+```text
+get advert.interval
+get flood.advert.interval
+get flood.max.advert
+get flood.max.unscoped
+get path.hash.mode
+get multi.acks
+get loop.detect
+get dutycycle
+get agc.reset.interval
+get repeat
+region
+region default
+region home
+eventlog status
+```
+
+Les valeurs attendues sont respectivement `60`, `24`, `6`, `5`, `1`, `1`,
+`minimal`, `10.0%`, `4`, `on`, puis la chaîne
+`eu > fr > fr-pac > fr-05 > fr-73`, avec `fr` comme région par défaut et
+région d'origine. `eventlog status` doit montrer un nouveau numéro de boot et
+`write_errors 0`.
+
+### Détail des réglages réseau du profil
+
+| Commande | Valeurs et unité | Persistance | Effet dans ce profil |
+|---|---|---:|---|
+| `set advert.interval 60` | `0` pour désactiver, sinon 60 à 240 minutes ; valeur arrondie au multiple de 2 inférieur | Oui | Une annonce locale zéro saut toutes les 60 minutes. |
+| `set flood.advert.interval 24` | `0` pour désactiver, sinon 3 à 168 heures | Oui | Une annonce d'identité propagée en flood toutes les 24 heures. |
+| `set flood.max.advert 6` | 0 à 64 sauts | Oui | Limite les annonces flood à 6 sauts. `0` interdit leur propagation. |
+| `set flood.max.unscoped 5` | 0 à 64 sauts | Oui | Limite à 5 sauts les floods sans région/scope ; les paquets correctement scopés suivent leur propre politique. |
+| `set path.hash.mode 1` | `0`, `1` ou `2` | Oui | Utilise des identifiants de chemin sur 2 octets pour les annonces émises par ce répéteur. `0` = 1 octet, `2` = 3 octets. |
+| `set multi.acks 1` | `0` ou `1` | Oui | Active la prise en charge des accusés de réception multiples. |
+| `set loop.detect minimal` | `off`, `minimal`, `moderate` ou `strict` | Oui | Rejette seulement les floods présentant les répétitions de chemin caractéristiques d'une boucle, avec la politique la moins agressive. |
+| `set dutycycle 10` | 1 à 100 % | Oui | Limite l'occupation radio de longue durée à environ 10 %. Ce réglage ne remplace pas le respect du plan de fréquences local. |
+| `set agc.reset.interval 4` | Secondes, arrondies au multiple de 4 inférieur ; `0` désactive | Oui | Réinitialise périodiquement l'AGC toutes les 4 secondes. Utiliser une valeur représentable de 0 à 1020 secondes. |
+| `set repeat on` | `on` ou `off` | Oui | Autorise le transfert des paquets reçus. |
+| `region def eu fr fr-pac fr-05 fr-73` | Noms séparés par des espaces | En RAM jusqu'à `region save` | Crée une chaîne hiérarchique : chaque nom devient l'enfant du précédent. Les nouvelles régions autorisent le flood par défaut. |
+| `region default fr` | Nom existant ou `<null>` | Sauvegardé immédiatement | Utilise `fr` comme scope par défaut pour les émissions du nœud. |
+| `region home fr` | Nom existant | En RAM jusqu'à `region save` | Marque `fr` comme région d'origine. Le caractère `^` affiché par `region` désigne cette région. |
+| `region save` | Aucune option | Oui | Écrit la table et les marqueurs régionaux. Toujours attendre `OK`. |
+| `reboot` | Aucune option | Sans objet | Redémarre immédiatement, sans réponse finale ; sert ici à vérifier la persistance. |
+
+`path.hash.mode 1` réduit le risque de collision d'identifiants par rapport au
+mode 0, mais les anciens nœuds antérieurs à MeshCore 1.14 peuvent ne pas relayer
+les chemins multi-octets. `loop.detect minimal` laisse davantage de tolérance
+qu'un réglage `moderate` ou `strict` tout en limitant les tempêtes de paquets.
+
+`region def` ne supprime pas une ancienne arborescence. Toujours lire `region`
+avant `region save` si le nœud avait déjà été configuré. Une erreur au milieu
+d'une commande peut laisser les premiers éléments créés uniquement en RAM ;
+corriger ou redémarrer sans sauvegarder.
 
 ## Commandes batterie et réveil ajoutées
 
@@ -42,13 +125,16 @@ mesure réelle de son seuil LPCOMP.
 | `get power.temp` | Indique que la NTC batterie n'est pas accessible au MCU et affiche séparément la température MCU. |
 | `get power.chargeguard` | Confirme la protection thermique autonome CN3165/NTC. |
 
-Politique recovery.4 :
+Politique recovery.6 :
 
 - passage en économie sous 3,50 V ;
 - retour normal à partir de 3,55 V ;
 - état critique sous 3,30 V ;
 - annulation du compteur critique à partir de 3,35 V ;
 - arrêt après 600 secondes critiques continues ;
+- alerte chiffrée d'arrêt préventive à 3,35 V, réarmée à 3,40 V ;
+- seconde alerte prioritaire juste avant l'arrêt effectif, puis délai radio de
+  12 secondes pour l'émission et une retransmission en absence d'ACK ;
 - l'alimentation USB/externe empêche l'arrêt automatique de test.
 
 La valeur donnée par `get power.temp` n'est **pas** la température de la
@@ -71,6 +157,47 @@ Après un réveil solaire, les trois commandes les plus importantes sont :
 get pwrmgt.bootreason
 get pwrmgt.bootmv
 eventlog
+```
+
+## Alertes privées MeshCore ajoutées
+
+Les alertes sont des messages privés MeshCore chiffrés pour chaque clé publique
+enregistrée. La première installation contient déjà la clé publique fournie
+pour les essais. La liste accepte quatre destinataires. Une route directe connue
+est réutilisée ; sinon le message privé est envoyé en flood chiffré. Chaque
+émission attend un ACK et effectue une retransmission après quatre secondes.
+
+| Commande | Effet |
+|---|---|
+| `alert status` ou `alert list` | Nombre de destinataires, clés abrégées et seuils alerte/réarmement. |
+| `alert get <N>` | Affiche la clé publique complète du destinataire N. |
+| `alert add <clé_publique_64_hex>` | Ajoute et enregistre un destinataire, sans doublon. |
+| `alert remove <N>` | Retire le destinataire par son numéro. |
+| `alert remove <clé_publique_64_hex>` | Retire le destinataire par sa clé complète. |
+| `alert clear` | Efface toute la liste ; aucune alerte ne pourra alors partir. |
+| `alert threshold` | Affiche le seuil pré-arrêt et son seuil de réarmement. |
+| `alert threshold <mV> [réarmement_mV]` | Enregistre les seuils ; sans seconde valeur, ajoute 50 mV. |
+| `alert test` | Envoie immédiatement un message de test à tous les destinataires. |
+
+Valeurs sûres livrées :
+
+```text
+alert threshold 3350 3400
+```
+
+Le premier message d'arrêt part à 3,35 V alors que le nœud est encore actif.
+Si la tension reste ensuite sous 3,30 V pendant dix minutes, une alerte finale
+prioritaire annonce la coupure LoRa. Au redémarrage, l'alerte `P1 demarre` est
+mise en file uniquement après l'initialisation de la radio, du stockage, des
+capteurs et du maillage ; elle contient la tension réellement mesurée, la cause
+de reset et la raison de l'arrêt précédent.
+
+Exemple pour ajouter un second appareil :
+
+```text
+alert add <64_caracteres_hex_de_la_cle_publique>
+alert list
+alert test
 ```
 
 ## GPS saisonnier ajouté
@@ -96,7 +223,7 @@ Autres diagnostics GPS :
 |---|---|
 | `get gps.schedule` | Fenêtre quotidienne, secondes restantes, prochaine fenêtre et override éventuel. |
 | `gps` | État GPS MeshCore : actif/inactif, fix et satellites. |
-| `gps sync` | Synchronise l'horloge depuis un fix GPS valide. |
+| `gps sync` | Demande une synchronisation dès que le GPS fournit plusieurs secondes de date/heure valides ; répond immédiatement `ok`, même si le fix doit encore être attendu. |
 | `gps setloc` | Copie la position GPS dans la position configurée du nœud. |
 | `gps advert` | Lit la politique de position dans les annonces. |
 | `gps advert none` | N'annonce aucune position. |
@@ -104,7 +231,36 @@ Autres diagnostics GPS :
 | `gps advert prefs` | Annonce la latitude/longitude enregistrée. |
 
 Préférer `gps override on/off` à `gps on/off` : les overrides sont conçus pour
-la politique saisonnière recovery.4 et sont restaurés après redémarrage.
+la politique saisonnière recovery.6 et sont restaurés après redémarrage.
+
+### Horloge : GPS, CLI distante et USB
+
+Pour une horloge issue du GPS, utiliser :
+
+```text
+gps override on
+gps sync
+gps
+clock
+eventlog
+```
+
+`gps sync` ne copie pas l'heure de l'ordinateur. Il arme la synchronisation et
+le fournisseur NMEA règle l'horloge après réception d'une date GPS valide. Le
+journal crée alors `GPS_TIME_SYNC` avec le temps d'acquisition et le nombre de
+satellites. Recovery.6 effectue également cette synchronisation automatiquement
+au premier fix valide d'une fenêtre GPS.
+
+`clock sync` a une fonction différente : il synchronise le répéteur avec
+l'horodatage porté par une commande MeshCore **distante**. Depuis la console USB,
+la commande ne possède aucun horodatage émetteur (`0`) et répond normalement
+`ERR: clock cannot go backwards`. Elle ne consulte ni le GPS ni l'horloge du PC.
+Ne pas utiliser `clock sync` pour un essai GPS.
+
+`clock` est une lecture seule. `time <epoch>` est un réglage manuel et n'est pas
+nécessaire lorsque le GPS fonctionne. L'horloge ne doit jamais être considérée
+comme valide avant `GPS_TIME_SYNC` ou une synchronisation MeshCore distante
+acceptée.
 
 ## Journal persistant ajouté
 
@@ -114,7 +270,10 @@ la politique saisonnière recovery.4 et sont restaurés après redémarrage.
 | `eventlog` | Imprime les événements dans l'ordre puis renvoie `EOF`. |
 | `eventlog clear` | Efface uniquement le journal opérationnel et crée une nouvelle entrée `LOG_CLEARED`. |
 
-Le journal contient notamment : démarrage, fin d'initialisation, reset,
+Le journal est stocké sur la mémoire QSPI externe avec délais d'opération
+bornés. Au premier boot recovery.6, l'ancien journal InternalFS est copié sans
+être effacé. Le journal contient notamment : démarrage, état brut des deux
+boutons, configuration radio réellement appliquée, fin d'initialisation, reset,
 raison d'arrêt, tension au boot, transitions batterie, arrêt basse tension,
 réveil du profil 3,45 V, détection GPS, début/fin de fenêtre, premier fix,
 temps d'acquisition, satellites, synchronisation RTC, absence de fix et
@@ -154,7 +313,7 @@ du même boot ; le symbole `~` signale une heure estimée.
 | `get lat` / `get lon` | Position enregistrée. |
 | `set lat <degrés>` / `set lon <degrés>` | Modifie la position enregistrée. |
 
-Le premier fix de chaque fenêtre recovery.4 programme une annonce flood et
+Le premier fix de chaque fenêtre recovery.6 programme une annonce flood et
 rafraîchit l'horloge lorsque le fix fournit une date plausible.
 
 ## Vérification et réglages LoRa
@@ -185,6 +344,10 @@ set flood.max <0..64>
 set flood.max.advert <0..64>
 ```
 
+Sur le P1, `set tx` accepte uniquement **-9 à +22 dBm**. Une ancienne préférence
+à 30 dBm est automatiquement ramenée et enregistrée à 22 dBm au premier boot.
+Le SX1262 ne sait pas produire 30 dBm.
+
 `set radio` nécessite un redémarrage. Une fréquence, un débit ou une puissance
 incorrects peuvent isoler le répéteur ou enfreindre la réglementation locale.
 Sauvegarder d'abord la réponse de `get radio` et `get tx`.
@@ -200,12 +363,17 @@ tempradio <freq>,<bw>,<sf>,<cr>,<durée_minutes>
 | Commande | Effet / prudence |
 |---|---|
 | `reboot` | Redémarrage immédiat, sans réponse CLI finale. |
-| `shutdown` | Arrêt volontaire immédiat. Le mode de réveil volontaire diffère de l'arrêt automatique basse tension. |
+| `shutdown` | Arrêt volontaire immédiat. Recovery.6 arme aussi le réveil solaire afin qu'un faux arrêt ne puisse plus immobiliser le nœud. |
 | `poweroff` | Alias de `shutdown`. |
 | `time <epoch>` | Avance l'horloge à un timestamp Unix ; elle refuse de reculer. |
 | `password <nouveau>` | Change le mot de passe administrateur et l'affiche en réponse. Ne pas publier cette réponse. |
 | `set name <nom>` | Change le nom annoncé. |
 | `set owner.info <texte>` | Change les informations propriétaire. |
+
+L'arrêt automatique par maintien du bouton physique est désactivé dans
+recovery.6. L'entrée avait déclenché un faux arrêt `user` sur l'unité de test.
+Les deux niveaux de bouton sont néanmoins enregistrés à chaque boot sous
+`BUTTON_STATE` afin de qualifier le câblage avant de réactiver cette fonction.
 
 ## Commandes dangereuses ou déconseillées pendant les essais
 

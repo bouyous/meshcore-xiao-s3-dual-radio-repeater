@@ -3,6 +3,10 @@
 
 #include "MyMesh.h"
 
+#if defined(P1_EVENT_LOG_QSPI)
+  #include <CustomLFS_QSPIFlash.h>
+#endif
+
 #ifdef DISPLAY_CLASS
   #include "UITask.h"
   static UITask ui_task(board, display);
@@ -18,6 +22,38 @@ SimpleMeshTables tables;
 
 MyMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
+#if defined(P1_EVENT_LOG_QSPI)
+static bool migrateP1EventJournal(Adafruit_LittleFS& source,
+                                  Adafruit_LittleFS& destination) {
+  static constexpr const char* path = "/p1_events.bin";
+  if (destination.exists(path)) return true;
+  if (!source.exists(path)) return true;
+
+  File input = source.open(path, FILE_O_READ);
+  File output = destination.open(path, FILE_O_WRITE);
+  if (!input || !output) {
+    if (input) input.close();
+    if (output) output.close();
+    return false;
+  }
+
+  uint8_t buffer[120];  // exactly four packed journal records
+  bool ok = true;
+  while (input.available()) {
+    const int count = input.read(buffer, sizeof(buffer));
+    if (count <= 0 || output.write(buffer, count) != (size_t)count) {
+      ok = false;
+      break;
+    }
+  }
+  output.flush();
+  input.close();
+  output.close();
+  if (!ok) destination.remove(path);
+  return ok;
+}
+#endif
+
 void halt() {
   while (1) ;
 }
@@ -30,9 +66,8 @@ static char ethernet_command[160];
 // For power saving
 unsigned long POWERSAVING_FIRSTSLEEP_SECS = 120; // The first sleep (if enabled) from boot
 
-#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_)
+#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && P1_BUTTON_POWEROFF_ENABLED
 static unsigned long userBtnDownAt = 0;
-#define USER_BTN_HOLD_OFF_MILLIS 1500
 #endif
 
 void setup() {
@@ -65,13 +100,39 @@ void setup() {
   }
 
 #if defined(P1_EVENT_LOG)
-  if (p1_event_journal.begin(*fs, rtc_clock)) {
+  Adafruit_LittleFS* journal_fs = fs;
+#if defined(P1_EVENT_LOG_QSPI)
+  // InternalFS writes on nRF52 can wait forever for a missed SoftDevice flash
+  // event.  The P1's dedicated P25Q16H QSPI device has bounded operation
+  // timeouts, so keep high-frequency diagnostics away from MCU flash.
+  if (QSPIFlash.begin()) {
+    journal_fs = &QSPIFlash;
+    Serial.println("P1 event journal: external QSPI");
+    if (!migrateP1EventJournal(*fs, QSPIFlash)) {
+      Serial.println("ERROR: legacy P1 journal migration failed");
+    }
+  } else {
+    journal_fs = nullptr;
+    Serial.println("ERROR: QSPI event journal unavailable; logging disabled");
+  }
+#endif
+  if (journal_fs && p1_event_journal.begin(*journal_fs, rtc_clock)) {
     board.setEventJournal(&p1_event_journal);
     sensors.setEventSink(&p1_event_journal);
     p1_event_journal.recordBoot(board.getResetReason(),
                                 board.getShutdownReason(),
                                 board.getBootVoltage(),
                                 board.isExternalPowered());
+    uint8_t released_buttons = 0;
+#ifdef PIN_BUTTON1
+    if (digitalRead(PIN_BUTTON1) == HIGH) released_buttons |= 0x01;
+#endif
+#ifdef PIN_BUTTON2
+    if (digitalRead(PIN_BUTTON2) == HIGH) released_buttons |= 0x02;
+#else
+    released_buttons |= 0x02;
+#endif
+    p1_event_journal.recordButtonState(released_buttons);
   } else {
     Serial.println("ERROR: P1 event journal unavailable");
   }
@@ -134,6 +195,17 @@ void setup() {
 
   the_mesh.begin(fs);
 
+#if defined(P1_EVENT_LOG)
+  NodePrefs* radio_prefs = the_mesh.getNodePrefs();
+  p1_event_journal.recordRadioReady(radio_prefs->freq,
+                                    radio_prefs->tx_power_dbm,
+                                    radio_prefs->sf,
+                                    radio_prefs->cr);
+  Serial.printf("Radio ready: %.6f MHz, TX %d dBm, SF%u, CR%u\n",
+                radio_prefs->freq, radio_prefs->tx_power_dbm,
+                radio_prefs->sf, radio_prefs->cr);
+#endif
+
 #ifdef DISPLAY_CLASS
   ui_task.begin(the_mesh.getNodePrefs(), FIRMWARE_BUILD_DATE, FIRMWARE_VERSION);
 #endif
@@ -150,6 +222,12 @@ void setup() {
   board.onBootComplete();
 #if defined(P1_EVENT_LOG)
   p1_event_journal.recordBootComplete(board.getBattMilliVolts());
+#endif
+#if defined(P1_POWER_ALERTS)
+  the_mesh.sendBootAlert(
+      board.getBattMilliVolts(),
+      board.getResetReasonString(board.getResetReason()),
+      board.getShutdownReasonString(board.getShutdownReason()));
 #endif
 }
 
@@ -201,13 +279,14 @@ void loop() {
   }
 #endif
 
-#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && !defined(DISPLAY_CLASS)
+#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && \
+    P1_BUTTON_POWEROFF_ENABLED && !defined(DISPLAY_CLASS)
   // Hold the user button to power off the SenseCAP Solar repeater.
   int btnState = digitalRead(PIN_USER_BTN);
   if (btnState == LOW) {
     if (userBtnDownAt == 0) {
       userBtnDownAt = millis();
-    } else if ((unsigned long)(millis() - userBtnDownAt) >= USER_BTN_HOLD_OFF_MILLIS) {
+    } else if ((unsigned long)(millis() - userBtnDownAt) >= P1_BUTTON_POWEROFF_HOLD_MS) {
       Serial.println("Powering off...");
       board.powerOff();  // does not return
     }
@@ -220,6 +299,9 @@ void loop() {
   board.servicePowerManagement();
   mesh::MainBoard::PowerStatus power_status;
   if (board.getPowerStatus(power_status)) {
+#if defined(P1_POWER_ALERTS)
+    the_mesh.notifyPowerStatus(power_status);
+#endif
     sensors.setPowerSaveMode(power_status.power_saving);
   }
   sensors.loop();
@@ -227,9 +309,12 @@ void loop() {
     // One flood advert per scheduled GPS window, after the first valid fix,
     // so the daily acquisition is actually propagated through the mesh.
     NodePrefs* prefs = the_mesh.getNodePrefs();
+    // Do not erase internal flash for normal GPS wander.  Roughly 0.001 deg
+    // is 70-110 m in France: large enough to persist a genuine relocation,
+    // while ordinary fixes remain RAM-only and are still advertised.
     const bool location_changed =
-        fabs(prefs->node_lat - sensors.node_lat) > 0.000005 ||
-        fabs(prefs->node_lon - sensors.node_lon) > 0.000005 ||
+        fabs(prefs->node_lat - sensors.node_lat) > 0.001 ||
+        fabs(prefs->node_lon - sensors.node_lon) > 0.001 ||
         prefs->advert_loc_policy != ADVERT_LOC_PREFS;
     prefs->node_lat = sensors.node_lat;
     prefs->node_lon = sensors.node_lon;

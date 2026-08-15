@@ -53,6 +53,9 @@ public:
   void recordShutdown(uint8_t reason, uint16_t battery_mv,
                       uint32_t critical_seconds);
   void recordRecoveryReset(uint16_t battery_mv, uint32_t standby_seconds);
+  void recordButtonState(uint8_t released_mask);
+  void recordRadioReady(float frequency_mhz, int8_t tx_power_dbm,
+                        uint8_t sf, uint8_t cr);
 
   void onSensorRuntimeEvent(const SensorRuntimeEvent& event) override;
 

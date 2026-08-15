@@ -34,6 +34,24 @@
 #define PIN_BUTTON2             (20)
 #define PIN_USER_BTN            PIN_BUTTON1
 
+// The upstream repeater treated 1.5 s LOW on PIN_BUTTON1 as an intentional
+// power-off.  A field unit has now produced that condition without a user
+// action, leaving the solar wake path disarmed.  Keep physical power-off
+// disabled in the recovery profile until both carrier button nets have been
+// verified.  CLI shutdown remains available.
+#ifndef P1_BUTTON_POWEROFF_ENABLED
+#define P1_BUTTON_POWEROFF_ENABLED (0)
+#endif
+#ifndef P1_BUTTON_POWEROFF_HOLD_MS
+#define P1_BUTTON_POWEROFF_HOLD_MS (5000UL)
+#endif
+
+// Wio-SX1262/SX1262 accepts at most +22 dBm.  The generic repeater CLI used
+// to accept +30 dBm and silently ignore RadioLib's error return.
+#ifndef MAX_LORA_TX_POWER
+#define MAX_LORA_TX_POWER       (22)
+#endif
+
 #define VBAT_ENABLE             (19)    // Output LOW to enable reading of the BAT voltage.
 
 // Analog pins
@@ -66,6 +84,18 @@
 #endif
 #ifndef PWR_SAMPLE_INTERVAL_SEC
 #define PWR_SAMPLE_INTERVAL_SEC  (30)
+#endif
+
+// Independent pre-shutdown warning. At 3.35 V the four-cell pack still has
+// enough reserve for an encrypted LoRa alert before the 3.30 V decision.
+#ifndef P1_EARLY_ALERT_MV
+#define P1_EARLY_ALERT_MV        (3350)
+#endif
+#ifndef P1_EARLY_ALERT_CLEAR_MV
+#define P1_EARLY_ALERT_CLEAR_MV  (3400)
+#endif
+#ifndef P1_ALERT_SHUTDOWN_GRACE_SEC
+#define P1_ALERT_SHUTDOWN_GRACE_SEC (12)
 #endif
 
 // Serial interfaces

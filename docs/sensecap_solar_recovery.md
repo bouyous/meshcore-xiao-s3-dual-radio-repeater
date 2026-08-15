@@ -22,15 +22,23 @@ commit `727fc0512ce08bfd7b499e46daa7fca6eeec730d`.
   daily window is still open.
 - Below 3300 mV, the state becomes `critical`.
 - The critical timer is cleared only at or above 3350 mV.
+- At or below 3350 mV, an encrypted pre-shutdown alert is sent to every
+  configured public key while the node and LoRa radio are still fully active.
+  This alert rearms after the battery reaches 3400 mV.
 - After 600 seconds continuously in the critical band, GPS and LoRa are shut
-  down, `LOW_VOLTAGE` is stored in GPREGRET2, LPCOMP/VBUS wake is armed and
-  the nRF52840 enters SYSTEMOFF.
+  down. A final priority alert gets a 12-second radio grace period (one retry),
+  then `LOW_VOLTAGE` is stored in GPREGRET2, LPCOMP/VBUS wake is armed and the
+  nRF52840 enters SYSTEMOFF.
+- After a complete boot, an encrypted startup alert reports measured voltage,
+  reset cause and the previous shutdown reason.
 - USB/external power suppresses runtime low-voltage shutdown.
 - Invalid ADC readings outside 1000..5000 mV cannot directly request shutdown;
   a physically possible deeply discharged battery remains critical.
 
-All policy values are compile-time overrides in
-`variants/sensecap_solar/variant.h`.
+The power-state values are compile-time overrides in
+`variants/sensecap_solar/variant.h`. Alert recipients and the 3350/3400 mV
+alert hysteresis are persistent and can be changed through the authenticated
+CLI without rebuilding the firmware.
 
 ## Voltage wake limitation
 
@@ -77,6 +85,9 @@ gps override 24h
 gps override 96h
 gps override on
 gps override off
+alert status
+alert threshold
+alert test
 ```
 
 Timed values from 1 to 168 hours are accepted. The override only opens the GPS
@@ -84,6 +95,13 @@ acquisition window; a low-battery economy or critical state still forces the
 GPS off and therefore always has priority. `on` and `off` are stored in a
 separate one-byte LittleFS marker so changing season does not rewrite the main
 MeshCore preferences. These commands are deliberately local-serial only.
+
+Operational alert commands (`alert list`, `alert get`, `alert add`,
+`alert remove`, `alert clear`, `alert threshold`, and `alert test`) are also
+accepted over an authenticated MeshCore administrator CLI session. The list
+holds up to four 32-byte public keys. Messages are individually encrypted;
+unknown routes use encrypted flood delivery and known ACL routes use direct
+delivery.
 
 The existing commands remain available:
 

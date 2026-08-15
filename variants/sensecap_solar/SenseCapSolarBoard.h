@@ -18,6 +18,10 @@ protected:
   mesh::PowerStateMachine power_state_machine;
   uint32_t next_power_sample_ms = 0;
   bool peripherals_shutdown = false;
+#if defined(P1_POWER_ALERTS)
+  bool low_voltage_shutdown_pending = false;
+  uint32_t low_voltage_shutdown_at_ms = 0;
+#endif
 #if defined(P1_EVENT_LOG)
   P1EventJournal* event_journal = nullptr;
 #endif
@@ -68,13 +72,23 @@ public:
     digitalWrite(LED_BLUE, LOW);
 
 #ifdef PIN_USER_BTN
-    while (digitalRead(PIN_USER_BTN) == LOW);
-    // Keep pull-up enabled in system-off so the wake line doesn't float low.
-    nrf_gpio_cfg_sense_input(digitalPinToInterrupt(g_ADigitalPinMap[PIN_USER_BTN]), NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    // Never wait forever on a suspect/stuck button line.  Arm it only when
+    // released; voltage and USB recovery remain available in every case.
+    if (digitalRead(PIN_USER_BTN) == HIGH) {
+      nrf_gpio_cfg_sense_input(g_ADigitalPinMap[PIN_USER_BTN],
+                               NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    }
 #elif defined(PIN_BUTTON1)
-    while (digitalRead(PIN_BUTTON1) == LOW);
-    // Keep pull-up enabled in system-off so the wake line doesn't float low.
-    nrf_gpio_cfg_sense_input(digitalPinToInterrupt(g_ADigitalPinMap[PIN_BUTTON1]), NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    if (digitalRead(PIN_BUTTON1) == HIGH) {
+      nrf_gpio_cfg_sense_input(g_ADigitalPinMap[PIN_BUTTON1],
+                               NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    }
+#endif
+#ifdef PIN_BUTTON2
+    if (digitalRead(PIN_BUTTON2) == HIGH) {
+      nrf_gpio_cfg_sense_input(g_ADigitalPinMap[PIN_BUTTON2],
+                               NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+    }
 #endif
 
 #ifdef NRF52_POWER_MANAGEMENT

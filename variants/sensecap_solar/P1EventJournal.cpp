@@ -225,6 +225,24 @@ void P1EventJournal::recordRecoveryReset(uint16_t battery_mv,
          (int32_t)standby_seconds);
 }
 
+void P1EventJournal::recordButtonState(uint8_t released_mask) {
+  // bit 0 = BUTTON1 released/HIGH, bit 1 = BUTTON2 released/HIGH.
+  // Both nets are expected to idle HIGH.  Record a LOW as an error without
+  // allowing it to power off the recovery firmware.
+  const uint16_t flags = (released_mask == 0x03U) ? 0 : mesh::OP_EVENT_ERROR;
+  record(mesh::OperationalEventCode::BUTTON_STATE, released_mask, 0, flags);
+}
+
+void P1EventJournal::recordRadioReady(float frequency_mhz,
+                                      int8_t tx_power_dbm,
+                                      uint8_t sf, uint8_t cr) {
+  const int32_t frequency_hz = (int32_t)(frequency_mhz * 1000000.0F + 0.5F);
+  const int32_t packed = (uint8_t)tx_power_dbm |
+                         ((int32_t)sf << 8) |
+                         ((int32_t)cr << 16);
+  record(mesh::OperationalEventCode::RADIO_READY, frequency_hz, packed);
+}
+
 void P1EventJournal::onSensorRuntimeEvent(const SensorRuntimeEvent& event) {
   switch (event.type) {
     case SensorRuntimeEventType::GPS_DETECTED:
@@ -319,6 +337,11 @@ static void printEventDetails(Print& out,
       out.printf("POWER_RECOVERY_RESET vbat=%ldmV standby=%lds",
                  (long)record.value_a, (long)record.value_b);
       break;
+    case mesh::OperationalEventCode::BUTTON_STATE:
+      out.printf("BUTTON_STATE button1=%s button2=%s shutdown_detection=disabled",
+                 (record.value_a & 0x01) ? "released" : "LOW",
+                 (record.value_a & 0x02) ? "released" : "LOW");
+      break;
     case mesh::OperationalEventCode::GPS_DETECTED:
       out.print("GPS_DETECTED");
       break;
@@ -351,6 +374,12 @@ static void printEventDetails(Print& out,
                  reason);
       break;
     }
+    case mesh::OperationalEventCode::RADIO_READY:
+      out.printf("RADIO_READY freq=%ldHz tx=%ddBm sf=%u cr=%u",
+                 (long)record.value_a, (int8_t)record.value_b,
+                 (unsigned)((uint32_t)record.value_b >> 8 & 0xFFU),
+                 (unsigned)((uint32_t)record.value_b >> 16 & 0xFFU));
+      break;
     default:
       out.printf("UNKNOWN event=%u a=%ld b=%ld", record.event,
                  (long)record.value_a, (long)record.value_b);

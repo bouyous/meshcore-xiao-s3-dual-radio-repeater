@@ -9,6 +9,10 @@
 #define BRIDGE_MAX_BAUD 115200
 #endif
 
+#ifndef MAX_LORA_TX_POWER
+#define MAX_LORA_TX_POWER 30
+#endif
+
 // Believe it or not, this std C function is busted on some platforms!
 static uint32_t _atoi(const char* sp) {
   uint32_t n = 0;
@@ -28,6 +32,7 @@ static bool isValidName(const char *n) {
 }
 
 void CommonCLI::loadPrefs(FILESYSTEM* fs) {
+  bool prefs_loaded = false;
   if (fs->exists("/prefs.json")) {
 #if defined(RP2040_PLATFORM)
     File file = fs->open("/prefs.json", "r");
@@ -37,12 +42,23 @@ void CommonCLI::loadPrefs(FILESYSTEM* fs) {
     if (file) {
       _prefs->loadSerial(file);   // new Serial prefs
       file.close();
+      prefs_loaded = true;
     }
   } else if (fs->exists("/com_prefs")) {
     loadPrefsInt(fs, "/com_prefs");
+    prefs_loaded = true;
     if (savePrefs(fs)) {  // save to new Serial prefs
   //    fs->remove("/com_prefs");  // remove old
     }
+  }
+
+  // JSON preferences bypass the legacy sanitisation block below.  Clamp an
+  // out-of-range persisted value here and repair it once so every subsequent
+  // boot reports and applies the power the radio can actually produce.
+  if (prefs_loaded) {
+    const int8_t requested = _prefs->tx_power_dbm;
+    _prefs->tx_power_dbm = constrain(requested, -9, MAX_LORA_TX_POWER);
+    if (_prefs->tx_power_dbm != requested) savePrefs(fs);
   }
 }
 
@@ -113,7 +129,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {  // Legacy 
     _prefs->bw = constrain(_prefs->bw, 7.8f, 500.0f);
     _prefs->sf = constrain(_prefs->sf, 5, 12);
     _prefs->cr = constrain(_prefs->cr, 5, 8);
-    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, 30);
+    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, MAX_LORA_TX_POWER);
     _prefs->multi_acks = constrain(_prefs->multi_acks, 0, 1);
     _prefs->adc_multiplier = constrain(_prefs->adc_multiplier, 0.0f, 10.0f);
     _prefs->path_hash_mode = constrain(_prefs->path_hash_mode, 0, 2);   // NOTE: mode 3 reserved for future
@@ -706,10 +722,15 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "OK");
     }
   } else if (memcmp(config, "tx ", 3) == 0) {
-    _prefs->tx_power_dbm = atoi(&config[3]);
-    savePrefs();
-    _callbacks->setTxPower(_prefs->tx_power_dbm);
-    strcpy(reply, "OK");
+    const int power = atoi(&config[3]);
+    if (power < -9 || power > MAX_LORA_TX_POWER) {
+      sprintf(reply, "Error, tx must be -9..%d dBm", MAX_LORA_TX_POWER);
+    } else {
+      _prefs->tx_power_dbm = power;
+      savePrefs();
+      _callbacks->setTxPower(_prefs->tx_power_dbm);
+      strcpy(reply, "OK");
+    }
   } else if (sender_timestamp == 0 && memcmp(config, "freq ", 5) == 0) {
     _prefs->freq = atof(&config[5]);
     savePrefs();

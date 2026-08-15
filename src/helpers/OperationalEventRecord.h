@@ -19,6 +19,7 @@ enum class OperationalEventCode : uint8_t {
   POWER_CRITICAL = 12,
   POWER_SHUTDOWN = 13,
   POWER_RECOVERY_RESET = 14,
+  BUTTON_STATE = 15,
 
   GPS_DETECTED = 20,
   GPS_NOT_DETECTED = 21,
@@ -27,7 +28,9 @@ enum class OperationalEventCode : uint8_t {
   GPS_TIME_SYNC = 24,
   GPS_WINDOW_END = 25,
   GPS_OVERRIDE_START = 26,
-  GPS_OVERRIDE_END = 27
+  GPS_OVERRIDE_END = 27,
+
+  RADIO_READY = 30
 };
 
 enum OperationalEventFlags : uint16_t {
