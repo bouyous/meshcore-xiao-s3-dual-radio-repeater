@@ -32,6 +32,9 @@
 #include <helpers/ClientACL.h>
 #include <helpers/CommonCLI.h>
 #include <helpers/IdentityStore.h>
+#if defined(P1_EVENT_LOG)
+#include <helpers/GpsPowerGuard.h>
+#endif
 #include <helpers/SimpleMeshTables.h>
 #include <helpers/StaticPoolPacketManager.h>
 #include <helpers/StatsFormatHelper.h>
@@ -86,12 +89,16 @@ struct NeighbourInfo {
 #define PACKET_LOG_FILE  "/packet_log"
 #if defined(P1_EVENT_LOG)
 #define P1_GPS_CONTINUOUS_FILE  "/p1_gps_continuous"
+#define P1_GPS_POWER_GUARD_FILE      "/p1_gps_powerguard"
+#define P1_GPS_POWER_GUARD_TEMP_FILE "/p1_gps_powerguard.tmp"
 #endif
 #if defined(P1_POWER_ALERTS)
 #define P1_ALERT_RECIPIENTS_FILE      "/p1_alert_recipients"
 #define P1_ALERT_RECIPIENTS_TEMP_FILE "/p1_alert_recipients.tmp"
 #define P1_ALERT_CONFIG_FILE           "/p1_alert_config"
 #define P1_ALERT_CONFIG_TEMP_FILE      "/p1_alert_config.tmp"
+#define P1_ALERT_CHANNEL_FILE           "/p1_alert_channel"
+#define P1_ALERT_CHANNEL_TEMP_FILE      "/p1_alert_channel.tmp"
 #endif
 
 class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
@@ -144,11 +151,29 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
 #if defined(P1_EVENT_LOG)
   bool persistGpsContinuous(bool enabled);
   bool gpsContinuousPersisted() const;
+  mesh::GpsPowerGuardMode gps_power_guard_mode =
+      mesh::GpsPowerGuardMode::ECONOMY;
+  bool loadGpsPowerGuard();
+  bool saveGpsPowerGuard();
+  void handleGpsPowerGuardCommand(const char* command, char* reply);
 #endif
 #if defined(P1_POWER_ALERTS)
+  enum class AlertDestination : uint8_t {
+    PRIVATE = 0,
+    PUBLIC,
+    CUSTOM_CHANNEL
+  };
   static constexpr size_t MAX_ALERT_RECIPIENTS = 4;
   static constexpr size_t MAX_ALERT_TEXT_LEN = 140;
+  static constexpr size_t MAX_ALERT_CHANNEL_NAME_LEN = 31;
+  static constexpr size_t MAX_ALERT_CHANNEL_KEY_LEN = 64;
   mesh::AlertRecipientList<MAX_ALERT_RECIPIENTS> alert_recipients;
+  AlertDestination alert_destination = AlertDestination::PRIVATE;
+  mesh::GroupChannel public_alert_channel = {};
+  mesh::GroupChannel custom_alert_channel = {};
+  char custom_alert_channel_name[MAX_ALERT_CHANNEL_NAME_LEN + 1] = {};
+  char custom_alert_channel_key[MAX_ALERT_CHANNEL_KEY_LEN + 1] = {};
+  bool custom_alert_channel_configured = false;
   uint32_t pending_alert_ack[MAX_ALERT_RECIPIENTS] = {};
   bool pending_alert_waiting[MAX_ALERT_RECIPIENTS] = {};
   char pending_alert_text[MAX_ALERT_TEXT_LEN + 1] = {};
@@ -157,6 +182,8 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   uint32_t pending_alert_finish_at = 0;
   bool pending_alert_active = false;
   bool pending_alert_retried = false;
+  bool pending_alert_channel_waiting = false;
+  uint32_t pending_alert_channel_timestamp = 0;
   bool deferred_alert_pending = false;
   char deferred_alert_text[MAX_ALERT_TEXT_LEN + 1] = {};
   bool power_state_initialized = false;
@@ -164,11 +191,28 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   uint16_t early_alert_mv = P1_EARLY_ALERT_MV;
   uint16_t early_alert_clear_mv = P1_EARLY_ALERT_CLEAR_MV;
   bool early_alert_latched = false;
+  uint32_t last_channel_cli_at = 0;
 
   bool loadAlertRecipients();
   bool saveAlertRecipients();
   bool loadAlertConfig();
   bool saveAlertConfig();
+  bool loadAlertChannelConfig();
+  bool saveAlertChannelConfig();
+  bool configureAlertChannel(mesh::GroupChannel& channel,
+                             const char* encoded_key,
+                             char* normalized_key = nullptr,
+                             size_t normalized_key_size = 0);
+  bool sendGroupText(const mesh::GroupChannel& channel, const char* text,
+                     uint32_t timestamp, uint32_t delay_millis = 0,
+                     const mesh::Packet* reply_to = nullptr);
+  bool sendAlertToChannel(const char* text);
+  bool sendChannelCliReply(const char* text,
+                           const mesh::Packet* incoming_packet,
+                           uint32_t incoming_timestamp);
+  void handleChannelCli(const char* command, char* reply, size_t reply_size);
+  uint8_t alertDestinationCount() const;
+  const char* alertDestinationName() const;
   bool sendAlertTo(size_t index, const char* text, uint8_t attempt);
   uint8_t startOperationalAlert(const char* text, bool replace_active = false);
   void serviceOperationalAlerts();
@@ -229,6 +273,12 @@ protected:
   void onControlDataRecv(mesh::Packet* packet) override;
 #if defined(P1_POWER_ALERTS)
   void onAckRecv(mesh::Packet* packet, uint32_t ack_crc) override;
+  int searchChannelsByHash(const uint8_t* hash,
+                           mesh::GroupChannel channels[],
+                           int max_matches) override;
+  void onGroupDataRecv(mesh::Packet* packet, uint8_t type,
+                       const mesh::GroupChannel& channel, uint8_t* data,
+                       size_t len) override;
 #endif
 
   void sendFloodReply(mesh::Packet* packet, unsigned long delay_millis, uint8_t path_hash_size);
@@ -285,6 +335,13 @@ public:
   void notifyPowerStatus(const mesh::MainBoard::PowerStatus& status);
   void sendBootAlert(uint16_t battery_mv, const char* reset_reason,
                      const char* previous_shutdown_reason);
+  void sendGpsFixAlert(uint32_t acquisition_seconds, int32_t satellites);
+#endif
+#if defined(P1_EVENT_LOG)
+  bool shouldGpsPowerSave(const mesh::MainBoard::PowerStatus& status) const {
+    return mesh::GpsPowerGuard::shouldSuppress(gps_power_guard_mode,
+                                               status.state);
+  }
 #endif
 
   void handleCommand(uint32_t sender_timestamp, char* command, char* reply);

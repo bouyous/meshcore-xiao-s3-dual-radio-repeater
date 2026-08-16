@@ -302,10 +302,21 @@ void loop() {
 #if defined(P1_POWER_ALERTS)
     the_mesh.notifyPowerStatus(power_status);
 #endif
+#if defined(P1_EVENT_LOG)
+    sensors.setPowerSaveMode(the_mesh.shouldGpsPowerSave(power_status));
+#else
     sensors.setPowerSaveMode(power_status.power_saving);
+#endif
   }
   sensors.loop();
   if (sensors.consumeFreshLocation()) {
+#if defined(P1_POWER_ALERTS)
+    uint32_t acquisition_seconds = 0;
+    int32_t satellites = 0;
+    if (sensors.getLastGpsFixInfo(acquisition_seconds, satellites)) {
+      the_mesh.sendGpsFixAlert(acquisition_seconds, satellites);
+    }
+#endif
     // One flood advert per scheduled GPS window, after the first valid fix,
     // so the daily acquisition is actually propagated through the mesh.
     NodePrefs* prefs = the_mesh.getNodePrefs();

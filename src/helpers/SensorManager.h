@@ -45,6 +45,12 @@ public:
   virtual void setEventSink(SensorRuntimeEventSink* sink) { (void)sink; }
   virtual void setPowerSaveMode(bool enabled) { (void)enabled; }
   virtual bool consumeFreshLocation() { return false; }
+  virtual bool getLastGpsFixInfo(uint32_t& acquisition_seconds,
+                                 int32_t& satellites) const {
+    (void)acquisition_seconds;
+    (void)satellites;
+    return false;
+  }
   virtual bool getGpsScheduleStatus(char* status, size_t max_len) const {
     (void)status;
     (void)max_len;

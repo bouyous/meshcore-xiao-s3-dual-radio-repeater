@@ -780,6 +780,20 @@ bool EnvironmentSensorManager::consumeFreshLocation() {
 #endif
 }
 
+bool EnvironmentSensorManager::getLastGpsFixInfo(
+    uint32_t& acquisition_seconds, int32_t& satellites) const {
+#if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  if (!gps_fix_advert_sent) return false;
+  acquisition_seconds = gps_last_fix_acquisition_seconds;
+  satellites = gps_last_fix_satellites;
+  return true;
+#else
+  (void)acquisition_seconds;
+  (void)satellites;
+  return false;
+#endif
+}
+
 bool EnvironmentSensorManager::getGpsScheduleStatus(char* status, size_t max_len) const {
 #if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
   if (!status || max_len == 0) return false;
@@ -1077,6 +1091,15 @@ bool EnvironmentSensorManager::gpsIsAwake(uint8_t ioPin){
 void EnvironmentSensorManager::start_gps() {
   gps_active = true;
   gps_powered_since_ms = millis();
+  #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  // A restart after a battery-saving pause is a new acquisition.  Publish
+  // and report its first fix even when the daily/continuous window remained
+  // logically open throughout the pause.
+  gps_fix_advert_sent = false;
+  gps_advert_pending = false;
+  gps_last_fix_acquisition_seconds = 0;
+  gps_last_fix_satellites = 0;
+  #endif
   #ifdef RAK_WISBLOCK_GPS
     pinMode(gpsResetPin, OUTPUT);
     digitalWrite(gpsResetPin, HIGH);
@@ -1154,10 +1177,13 @@ void EnvironmentSensorManager::loop() {
         gps_fix_advert_sent = true;
         gps_advert_pending = true;
         gps_window_had_fix = true;
+        gps_last_fix_acquisition_seconds =
+            (uint32_t)(millis() - gps_powered_since_ms) / 1000U;
+        gps_last_fix_satellites = (int32_t)_location->satellitesCount();
         emitRuntimeEvent(SensorRuntimeEventType::GPS_FIRST_FIX,
                          (uint32_t)_location->getTimestamp(),
                          (uint32_t)(millis() - gps_powered_since_ms),
-                         (int32_t)_location->satellitesCount());
+                         gps_last_fix_satellites);
       }
       #endif
     }

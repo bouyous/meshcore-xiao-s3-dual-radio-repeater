@@ -46,6 +46,8 @@ protected:
   bool gps_time_sync_reported = false;
   uint32_t gps_window_started_ms = 0;
   uint32_t gps_powered_since_ms = 0;
+  uint32_t gps_last_fix_acquisition_seconds = 0;
+  int32_t gps_last_fix_satellites = 0;
   void updateGpsSchedule(uint32_t now_ms);
   #endif
 
@@ -79,6 +81,8 @@ public:
   void setPowerSaveMode(bool enabled) override;
   void setEventSink(SensorRuntimeEventSink* sink) override { event_sink = sink; }
   bool consumeFreshLocation() override;
+  bool getLastGpsFixInfo(uint32_t& acquisition_seconds,
+                         int32_t& satellites) const override;
   bool getGpsScheduleStatus(char* status, size_t max_len) const override;
   bool handleGpsOverrideCommand(const char* argument, char* reply,
                                 size_t max_len) override;

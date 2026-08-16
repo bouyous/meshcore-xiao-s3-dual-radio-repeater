@@ -1,16 +1,16 @@
-# Guide CLI — SenseCAP Solar Node P1 recovery.6-guarded
+# Guide CLI — SenseCAP Solar Node P1 recovery.7.4-radio-cli-time
 
-Ce guide couvre les deux images expérimentales recovery.6 :
+Ce guide couvre les deux images expérimentales recovery.7 :
 
-- `v1.17.0-p1-recovery.6-guarded` : profil terrain SYSTEMOFF/LPCOMP ;
-- `v1.17.0-p1-recovery.6-test345-guarded` : profil de test avec réveil
+- `v1.17.0-p1-recovery.7.4-radio-cli-time` : profil terrain SYSTEMOFF/LPCOMP ;
+- `v1.17.0-p1-recovery.7.4-test345-radio-cli-time` : profil de test avec réveil
   simulé à 3,45 V en SYSTEM ON basse consommation.
 
 Les exemples supposent une console USB série. Les commandes ajoutées
 `gps override ...` et `eventlog ...` sont volontairement limitées à cette
-console locale. Les commandes `alert ...` fonctionnent aussi depuis une CLI
-MeshCore distante déjà authentifiée comme administrateur. Envoyer une commande
-par ligne.
+console locale. Les commandes `bat low ...`, `alert ...` et
+`gps powerguard ...` fonctionnent aussi depuis une CLI MeshCore distante déjà
+authentifiée comme administrateur. Envoyer une commande par ligne.
 
 ## Contrôle rapide recommandé
 
@@ -25,11 +25,12 @@ get pwrmgt.bootreason
 get pwrmgt.bootmv
 get gps.schedule
 gps override status
-alert status
+gps powerguard status
+bat low status
 eventlog status
 ```
 
-`ver` doit contenir `recovery.6`. Le profil test indique un seuil de réveil
+`ver` doit contenir `recovery.7`. Le profil test indique un seuil de réveil
 ADC de 3450 mV ; le profil terrain indique `3/8 VDD x 3.004` et nécessite une
 mesure réelle de son seuil LPCOMP.
 
@@ -125,7 +126,7 @@ corriger ou redémarrer sans sauvegarder.
 | `get power.temp` | Indique que la NTC batterie n'est pas accessible au MCU et affiche séparément la température MCU. |
 | `get power.chargeguard` | Confirme la protection thermique autonome CN3165/NTC. |
 
-Politique recovery.6 :
+Politique recovery.7 :
 
 - passage en économie sous 3,50 V ;
 - retour normal à partir de 3,55 V ;
@@ -159,7 +160,79 @@ get pwrmgt.bootmv
 eventlog
 ```
 
-## Alertes privées MeshCore ajoutées
+## Destination des alertes de batterie et de redémarrage
+
+Recovery.7 sait publier les alertes sous la forme standard
+`PAYLOAD_TYPE_GRP_TXT`. Elles apparaissent alors comme de vrais messages dans
+le canal MeshCore choisi, avec le préfixe du nom du nœud. La destination reste
+`private` après une migration afin qu'une installation ne publie jamais sur le
+canal général sans ordre explicite.
+
+| Commande | Effet |
+|---|---|
+| `bat low status` | Affiche la destination active, le nombre de destinataires privés et les seuils. La PSK du canal n'est jamais affichée. |
+| `bat low public` | Sélectionne volontairement le canal MeshCore standard `Public`. À éviter pour les essais répétés. |
+| `bat low private` | Revient aux messages directs chiffrés vers la liste de clés publiques. |
+| `bat low channel <NOM> <PSK>` | Enregistre puis sélectionne un canal de surveillance. Le nom peut contenir des espaces ; la PSK doit être la clé de canal MeshCore base64 (16/32 octets) ou son équivalent hexadécimal. |
+| `bat low channel` | Resélectionne le canal personnalisé déjà enregistré. |
+| `bat low <NOM>` | Raccourci de sélection si `<NOM>` correspond exactement au canal enregistré, par exemple `bat low FR SV`. |
+| `bat low test` | Publie immédiatement une alerte de test vers la destination active. |
+
+Configuration recommandée pour ne pas encombrer le canal public : créer le
+même canal de surveillance sur le T1000E, exporter/copier sa PSK, puis saisir :
+
+```text
+bat low channel FR SV <PSK_BASE64_DU_CANAL>
+bat low status
+bat low test
+```
+
+Le nom seul ne suffit pas à identifier cryptographiquement un canal MeshCore :
+le P1 doit recevoir la PSK une première fois. Elle est conservée dans sa
+configuration locale, n'apparaît ni dans `status`, ni dans le journal, ni dans
+les réponses ultérieures. Toute personne possédant cette PSK et ayant ajouté
+le même canal peut lire les alertes. Le canal `Public`, lui, est lisible par
+tous les utilisateurs qui l'ont activé.
+
+Les messages de canal ne possèdent pas d'ACK individuel. Le firmware émet deux
+fois le même paquet (même horodatage et même hash) à quatre secondes
+d'intervalle : un client ayant reçu le premier élimine le doublon, tandis
+qu'un client l'ayant manqué peut recevoir la seconde émission.
+
+### Diagnostic CLI directement dans le canal
+
+Quand la destination active est un canal personnalisé, le P1 peut déchiffrer
+un petit jeu de commandes de diagnostic envoyées comme messages ordinaires
+dans ce même canal. Cette passerelle est **strictement en lecture seule** :
+
+| Message envoyé dans le canal | Réponse du répéteur |
+|---|---|
+| `!p1 status` | État batterie, tension et résumé GPS. |
+| `!p1 battery` ou `!p1 power` | État électrique, seuils et durée critique. |
+| `!p1 gps` | Mode GPS, fenêtre, override et état d'alimentation. |
+| `!p1 version` | Version exacte et date de build. |
+| `!p1 alerts` | Destination et seuils des alertes. |
+| `!p1 help` | Liste compacte des commandes autorisées. |
+
+Chaque réponse commence par le nom du répéteur puis `CLI OK` ou `CLI ERR`.
+Tous les P1 recovery.7.4 présents sur le canal peuvent répondre à la même
+requête. Ils utilisent des créneaux stables répartis entre environ 0,35 et
+7,1 secondes selon leur identité, afin de réduire les collisions radio. Un
+même répéteur ignore les requêtes supplémentaires reçues moins de trois
+secondes après la précédente.
+
+La réponse reprend le scope régional de la requête entrante, y compris son
+absence de scope. Tant que le GPS n'a pas encore corrigé l'horloge du P1, elle
+reprend aussi l'horodatage récent de la requête : le compagnon ne classe donc
+plus une réponse valide plusieurs années en arrière dans l'historique. Ce
+trajet a été validé matériellement avec `!p1 gps` entre le P1 et un T1000E.
+
+Cette interface n'écoute jamais le canal `Public` et n'expose ni `set`, ni
+`reboot`, ni `shutdown`, ni effacement, ni changement de GPS. La PSK prouve
+seulement que l'émetteur connaît le canal ; elle n'authentifie pas une personne
+précise. C'est pourquoi aucune mutation n'est acceptée par cette voie.
+
+### Anciennes alertes privées
 
 Les alertes sont des messages privés MeshCore chiffrés pour chaque clé publique
 enregistrée. La première installation contient déjà la clé publique fournie
@@ -169,15 +242,15 @@ est réutilisée ; sinon le message privé est envoyé en flood chiffré. Chaque
 
 | Commande | Effet |
 |---|---|
-| `alert status` ou `alert list` | Nombre de destinataires, clés abrégées et seuils alerte/réarmement. |
+| `alert status` ou `alert list` | Alias historique de `bat low status`, avec les clés privées abrégées. |
 | `alert get <N>` | Affiche la clé publique complète du destinataire N. |
 | `alert add <clé_publique_64_hex>` | Ajoute et enregistre un destinataire, sans doublon. |
 | `alert remove <N>` | Retire le destinataire par son numéro. |
 | `alert remove <clé_publique_64_hex>` | Retire le destinataire par sa clé complète. |
-| `alert clear` | Efface toute la liste ; aucune alerte ne pourra alors partir. |
+| `alert clear` | Efface uniquement la liste privée. Une destination `Public` ou canal personnalisé reste active. |
 | `alert threshold` | Affiche le seuil pré-arrêt et son seuil de réarmement. |
 | `alert threshold <mV> [réarmement_mV]` | Enregistre les seuils ; sans seconde valeur, ajoute 50 mV. |
-| `alert test` | Envoie immédiatement un message de test à tous les destinataires. |
+| `alert test` | Alias historique de `bat low test` ; utilise la destination active. |
 
 Valeurs sûres livrées :
 
@@ -191,6 +264,11 @@ prioritaire annonce la coupure LoRa. Au redémarrage, l'alerte `P1 demarre` est
 mise en file uniquement après l'initialisation de la radio, du stockage, des
 capteurs et du maillage ; elle contient la tension réellement mesurée, la cause
 de reset et la raison de l'arrêt précédent.
+
+Le premier fix obtenu après chaque remise sous tension du GPS publie aussi
+`P1 GPS recupere` dans la destination active, avec la durée d'acquisition et
+le nombre de satellites connus. Cela couvre notamment une reprise après mise
+en économie, une nouvelle fenêtre quotidienne et un redémarrage complet.
 
 Exemple pour ajouter un second appareil :
 
@@ -211,11 +289,35 @@ alert test
 | `gps override 24h` | Temporaire | Ouvre le GPS pendant 24 heures. |
 | `gps override 96h` | Temporaire | Ouvre le GPS quatre jours pour un essai de décharge. |
 | `gps override 168h` | Temporaire | Durée maximale : sept jours. |
+| `gps powerguard economy` | Oui | Réglage sûr par défaut : coupe le GPS dès l'état économie (sous 3,50 V). |
+| `gps powerguard critical` | Oui | Laisse le GPS fonctionner en économie et le coupe seulement sous 3,30 V. |
+| `gps powerguard off` | Oui | N'arrête pas le GPS en économie/critique ; l'arrêt final SYSTEMOFF à basse tension reste obligatoire. |
+| `gps powerguard status` | Lecture seule | Affiche la politique persistante active. |
 
 Toutes les durées entières de `1h` à `168h` sont acceptées. Une durée
 temporaire sélectionne le profil hiver mémorisé ; à son expiration, le cycle
-quotidien reprend automatiquement. Une protection batterie `economy` ou
-`critical` coupe toujours le GPS, même avec `override on`.
+quotidien reprend automatiquement. `gps override` choisit quand le GPS est
+demandé ; `gps powerguard` décide si une tension basse peut suspendre cette
+demande. Même en mode `off`, le GPS est coupé pendant le délai final puis le
+nœud entre en SYSTEMOFF : cette commande ne désactive jamais la protection
+3,30 V/600 s.
+
+Pour forcer le GPS en continu pendant un essai de décharge malgré une batterie
+faible :
+
+```text
+gps override on
+gps powerguard off
+gps override status
+gps powerguard status
+```
+
+Pour revenir au profil hiver sûr :
+
+```text
+gps override off
+gps powerguard economy
+```
 
 Autres diagnostics GPS :
 
@@ -231,7 +333,7 @@ Autres diagnostics GPS :
 | `gps advert prefs` | Annonce la latitude/longitude enregistrée. |
 
 Préférer `gps override on/off` à `gps on/off` : les overrides sont conçus pour
-la politique saisonnière recovery.6 et sont restaurés après redémarrage.
+la politique saisonnière recovery.7 et sont restaurés après redémarrage.
 
 ### Horloge : GPS, CLI distante et USB
 
@@ -248,7 +350,7 @@ eventlog
 `gps sync` ne copie pas l'heure de l'ordinateur. Il arme la synchronisation et
 le fournisseur NMEA règle l'horloge après réception d'une date GPS valide. Le
 journal crée alors `GPS_TIME_SYNC` avec le temps d'acquisition et le nombre de
-satellites. Recovery.6 effectue également cette synchronisation automatiquement
+satellites. Recovery.7 effectue également cette synchronisation automatiquement
 au premier fix valide d'une fenêtre GPS.
 
 `clock sync` a une fonction différente : il synchronise le répéteur avec
@@ -271,7 +373,7 @@ acceptée.
 | `eventlog clear` | Efface uniquement le journal opérationnel et crée une nouvelle entrée `LOG_CLEARED`. |
 
 Le journal est stocké sur la mémoire QSPI externe avec délais d'opération
-bornés. Au premier boot recovery.6, l'ancien journal InternalFS est copié sans
+bornés. Au premier boot recovery.7, l'ancien journal InternalFS est copié sans
 être effacé. Le journal contient notamment : démarrage, état brut des deux
 boutons, configuration radio réellement appliquée, fin d'initialisation, reset,
 raison d'arrêt, tension au boot, transitions batterie, arrêt basse tension,
@@ -313,7 +415,7 @@ du même boot ; le symbole `~` signale une heure estimée.
 | `get lat` / `get lon` | Position enregistrée. |
 | `set lat <degrés>` / `set lon <degrés>` | Modifie la position enregistrée. |
 
-Le premier fix de chaque fenêtre recovery.6 programme une annonce flood et
+Le premier fix de chaque fenêtre recovery.7 programme une annonce flood et
 rafraîchit l'horloge lorsque le fix fournit une date plausible.
 
 ## Vérification et réglages LoRa
@@ -363,7 +465,7 @@ tempradio <freq>,<bw>,<sf>,<cr>,<durée_minutes>
 | Commande | Effet / prudence |
 |---|---|
 | `reboot` | Redémarrage immédiat, sans réponse CLI finale. |
-| `shutdown` | Arrêt volontaire immédiat. Recovery.6 arme aussi le réveil solaire afin qu'un faux arrêt ne puisse plus immobiliser le nœud. |
+| `shutdown` | Arrêt volontaire immédiat. Recovery.7 arme aussi le réveil solaire afin qu'un faux arrêt ne puisse plus immobiliser le nœud. |
 | `poweroff` | Alias de `shutdown`. |
 | `time <epoch>` | Avance l'horloge à un timestamp Unix ; elle refuse de reculer. |
 | `password <nouveau>` | Change le mot de passe administrateur et l'affiche en réponse. Ne pas publier cette réponse. |
@@ -371,7 +473,7 @@ tempradio <freq>,<bw>,<sf>,<cr>,<durée_minutes>
 | `set owner.info <texte>` | Change les informations propriétaire. |
 
 L'arrêt automatique par maintien du bouton physique est désactivé dans
-recovery.6. L'entrée avait déclenché un faux arrêt `user` sur l'unité de test.
+recovery.7. L'entrée avait déclenché un faux arrêt `user` sur l'unité de test.
 Les deux niveaux de bouton sont néanmoins enregistrés à chaque boot sous
 `BUTTON_STATE` afin de qualifier le câblage avant de réactiver cette fonction.
 

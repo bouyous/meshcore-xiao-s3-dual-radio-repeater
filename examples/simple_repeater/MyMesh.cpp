@@ -1,5 +1,8 @@
 #include "MyMesh.h"
 #include <algorithm>
+#if defined(P1_POWER_ALERTS)
+#include <base64.hpp>
+#endif
 
 /* ------------------------------ Config -------------------------------- */
 
@@ -59,6 +62,12 @@
 #define CLI_REPLY_DELAY_MILLIS      600
 
 #define LAZY_CONTACTS_WRITE_DELAY    5000
+
+#if defined(P1_POWER_ALERTS)
+// Standard MeshCore public channel.  It is deliberately selected only by an
+// explicit CLI command so a new installation cannot accidentally spam it.
+static constexpr char P1_PUBLIC_GROUP_PSK[] = "izOH6cXN6mrJ5e26oRXNcg==";
+#endif
 
 void MyMesh::putNeighbour(const mesh::Identity &id, uint32_t timestamp, float snr) {
 #if MAX_NEIGHBOURS // check if neighbours enabled
@@ -420,6 +429,71 @@ bool MyMesh::persistGpsContinuous(bool enabled) {
     file.close();
   }
   return written && _fs->exists(P1_GPS_CONTINUOUS_FILE);
+}
+
+bool MyMesh::loadGpsPowerGuard() {
+  gps_power_guard_mode = mesh::GpsPowerGuardMode::ECONOMY;
+  if (!_fs) return false;
+  if (!_fs->exists(P1_GPS_POWER_GUARD_FILE)) return true;
+
+  File file = _fs->open(P1_GPS_POWER_GUARD_FILE, FILE_O_READ);
+  if (!file) return false;
+  char value[16];
+  size_t len = file.readBytesUntil('\n', value, sizeof(value) - 1);
+  value[len] = '\0';
+  file.close();
+  if (len > 0 && value[len - 1] == '\r') value[--len] = '\0';
+
+  mesh::GpsPowerGuardMode loaded;
+  if (!mesh::GpsPowerGuard::parseMode(value, loaded)) return false;
+  gps_power_guard_mode = loaded;
+  return true;
+}
+
+bool MyMesh::saveGpsPowerGuard() {
+  if (!_fs) return false;
+  if (_fs->exists(P1_GPS_POWER_GUARD_TEMP_FILE)) {
+    _fs->remove(P1_GPS_POWER_GUARD_TEMP_FILE);
+  }
+  File file = _fs->open(P1_GPS_POWER_GUARD_TEMP_FILE, FILE_O_WRITE);
+  if (!file) return false;
+  const char* value = mesh::GpsPowerGuard::modeName(gps_power_guard_mode);
+  const bool written = file.print(value) == strlen(value) &&
+                       file.print('\n') == 1;
+  file.flush();
+  file.close();
+  if (!written || !_fs->rename(P1_GPS_POWER_GUARD_TEMP_FILE,
+                               P1_GPS_POWER_GUARD_FILE)) {
+    _fs->remove(P1_GPS_POWER_GUARD_TEMP_FILE);
+    return false;
+  }
+  return true;
+}
+
+void MyMesh::handleGpsPowerGuardCommand(const char* command, char* reply) {
+  while (*command == ' ') command++;
+  if (*command == '\0' || strcmp(command, "status") == 0) {
+    snprintf(reply, 160,
+             "GPS powerguard=%s (economy|critical|off); final SYSTEMOFF always protected",
+             mesh::GpsPowerGuard::modeName(gps_power_guard_mode));
+    return;
+  }
+
+  mesh::GpsPowerGuardMode requested;
+  if (!mesh::GpsPowerGuard::parseMode(command, requested)) {
+    strcpy(reply, "ERR - gps powerguard economy|critical|off|status");
+    return;
+  }
+  const auto previous = gps_power_guard_mode;
+  gps_power_guard_mode = requested;
+  if (!saveGpsPowerGuard()) {
+    gps_power_guard_mode = previous;
+    strcpy(reply, "ERR - GPS powerguard not saved");
+    return;
+  }
+  snprintf(reply, 160,
+           "OK - GPS powerguard=%s; final SYSTEMOFF remains enabled",
+           mesh::GpsPowerGuard::modeName(gps_power_guard_mode));
 }
 #endif
 
@@ -1005,6 +1079,282 @@ bool MyMesh::saveAlertConfig() {
   return true;
 }
 
+bool MyMesh::configureAlertChannel(mesh::GroupChannel& channel,
+                                   const char* encoded_key,
+                                   char* normalized_key,
+                                   size_t normalized_key_size) {
+  if (!encoded_key) return false;
+  const size_t encoded_len = strlen(encoded_key);
+  uint8_t secret[PUB_KEY_SIZE] = {};
+  int secret_len = 0;
+
+  bool all_hex = encoded_len == 32 || encoded_len == 64;
+  for (size_t i = 0; all_hex && i < encoded_len; i++) {
+    all_hex = mesh::Utils::isHexChar(encoded_key[i]);
+  }
+  if (all_hex) {
+    secret_len = (int)(encoded_len / 2);
+    if (!mesh::Utils::fromHex(secret, secret_len, encoded_key)) return false;
+  } else {
+    // Exact encoded lengths bound the third-party decoder to the 32-byte
+    // destination and reject truncated/oversized credentials early.
+    if (!(encoded_len == 24 || encoded_len == 44)) return false;
+    secret_len = decode_base64((unsigned char*)encoded_key, encoded_len,
+                               secret);
+    if (!(secret_len == 16 || secret_len == 32)) return false;
+  }
+
+  memset(&channel, 0, sizeof(channel));
+  memcpy(channel.secret, secret, secret_len);
+  mesh::Utils::sha256(channel.hash, sizeof(channel.hash), channel.secret,
+                      secret_len);
+  if (normalized_key && normalized_key_size > encoded_len) {
+    StrHelper::strncpy(normalized_key, encoded_key, normalized_key_size);
+  }
+  return true;
+}
+
+bool MyMesh::loadAlertChannelConfig() {
+  alert_destination = AlertDestination::PRIVATE;
+  custom_alert_channel_configured = false;
+  custom_alert_channel_name[0] = '\0';
+  custom_alert_channel_key[0] = '\0';
+  memset(&custom_alert_channel, 0, sizeof(custom_alert_channel));
+
+  if (!configureAlertChannel(public_alert_channel, P1_PUBLIC_GROUP_PSK)) {
+    return false;
+  }
+  if (!_fs) return false;
+  if (!_fs->exists(P1_ALERT_CHANNEL_FILE)) return true;
+
+  File file = _fs->open(P1_ALERT_CHANNEL_FILE, FILE_O_READ);
+  if (!file) return false;
+  char mode[16];
+  char name[MAX_ALERT_CHANNEL_NAME_LEN + 2];
+  char key[MAX_ALERT_CHANNEL_KEY_LEN + 2];
+  auto readLine = [&file](char* dest, size_t capacity) -> bool {
+    if (!capacity) return false;
+    const size_t len = file.readBytesUntil('\n', dest, capacity - 1);
+    dest[len] = '\0';
+    if (len > 0 && dest[len - 1] == '\r') dest[len - 1] = '\0';
+    return len > 0;
+  };
+  const bool have_mode = readLine(mode, sizeof(mode));
+  const bool have_name = readLine(name, sizeof(name));
+  const bool have_key = readLine(key, sizeof(key));
+  file.close();
+  if (!have_mode) return false;
+
+  if (have_name && have_key && strcmp(name, "-") != 0 &&
+      strcmp(key, "-") != 0) {
+    const size_t name_len = strlen(name);
+    bool valid_name = name_len > 0 && name_len <= MAX_ALERT_CHANNEL_NAME_LEN;
+    for (size_t i = 0; valid_name && i < name_len; i++) {
+      valid_name = (uint8_t)name[i] >= 32 && (uint8_t)name[i] <= 126;
+    }
+    if (!valid_name || !configureAlertChannel(
+            custom_alert_channel, key, custom_alert_channel_key,
+            sizeof(custom_alert_channel_key))) {
+      return false;
+    }
+    StrHelper::strncpy(custom_alert_channel_name, name,
+                       sizeof(custom_alert_channel_name));
+    custom_alert_channel_configured = true;
+  }
+
+  if (strcmp(mode, "private") == 0) {
+    alert_destination = AlertDestination::PRIVATE;
+  } else if (strcmp(mode, "public") == 0) {
+    alert_destination = AlertDestination::PUBLIC;
+  } else if (strcmp(mode, "channel") == 0 &&
+             custom_alert_channel_configured) {
+    alert_destination = AlertDestination::CUSTOM_CHANNEL;
+  } else {
+    return false;
+  }
+  return true;
+}
+
+bool MyMesh::saveAlertChannelConfig() {
+  if (!_fs) return false;
+  if (_fs->exists(P1_ALERT_CHANNEL_TEMP_FILE)) {
+    _fs->remove(P1_ALERT_CHANNEL_TEMP_FILE);
+  }
+  File file = _fs->open(P1_ALERT_CHANNEL_TEMP_FILE, FILE_O_WRITE);
+  if (!file) return false;
+
+  const char* mode = "private";
+  if (alert_destination == AlertDestination::PUBLIC) mode = "public";
+  if (alert_destination == AlertDestination::CUSTOM_CHANNEL) mode = "channel";
+  const char* name = custom_alert_channel_configured
+                         ? custom_alert_channel_name : "-";
+  const char* key = custom_alert_channel_configured
+                        ? custom_alert_channel_key : "-";
+  const bool written = file.print(mode) == strlen(mode) &&
+                       file.print('\n') == 1 &&
+                       file.print(name) == strlen(name) &&
+                       file.print('\n') == 1 &&
+                       file.print(key) == strlen(key) &&
+                       file.print('\n') == 1;
+  file.flush();
+  file.close();
+  if (!written || !_fs->rename(P1_ALERT_CHANNEL_TEMP_FILE,
+                               P1_ALERT_CHANNEL_FILE)) {
+    _fs->remove(P1_ALERT_CHANNEL_TEMP_FILE);
+    return false;
+  }
+  return true;
+}
+
+uint8_t MyMesh::alertDestinationCount() const {
+  if (alert_destination == AlertDestination::PRIVATE) {
+    return (uint8_t)alert_recipients.count();
+  }
+  if (alert_destination == AlertDestination::PUBLIC) return 1;
+  return custom_alert_channel_configured ? 1 : 0;
+}
+
+const char* MyMesh::alertDestinationName() const {
+  if (alert_destination == AlertDestination::PRIVATE) return "private";
+  if (alert_destination == AlertDestination::PUBLIC) return "Public";
+  return custom_alert_channel_configured ? custom_alert_channel_name
+                                         : "channel-unconfigured";
+}
+
+bool MyMesh::sendGroupText(const mesh::GroupChannel& channel, const char* text,
+                           uint32_t timestamp, uint32_t delay_millis,
+                           const mesh::Packet* reply_to) {
+  if (!text || !*text) return false;
+  // Group text wire format used by companion radios: timestamp, plain-text
+  // type, then "sender: message".  Keeping the same timestamp on the retry
+  // produces the same packet hash, so clients that received the first flood
+  // suppress a duplicate while a client that missed it can still accept it.
+  uint8_t payload[5 + MAX_GROUP_DATA_LENGTH];
+  memcpy(payload, &timestamp, sizeof(uint32_t));
+  payload[4] = TXT_TYPE_PLAIN;
+  int prefix_len = snprintf((char*)&payload[5], MAX_GROUP_DATA_LENGTH,
+                            "%s: ", _prefs.node_name);
+  if (prefix_len < 0) return false;
+  if (prefix_len > MAX_GROUP_DATA_LENGTH - 5) {
+    prefix_len = MAX_GROUP_DATA_LENGTH - 5;
+  }
+  size_t text_len = strlen(text);
+  const size_t max_text_len = MAX_GROUP_DATA_LENGTH - 5 - (size_t)prefix_len;
+  if (text_len > max_text_len) text_len = max_text_len;
+  memcpy(&payload[5 + prefix_len], text, text_len);
+
+  mesh::Packet* packet = createGroupDatagram(
+      PAYLOAD_TYPE_GRP_TXT, channel, payload, 5 + prefix_len + text_len);
+  if (!packet) return false;
+  if (reply_to) {
+    // A channel query may arrive unscoped or through a region other than this
+    // node's default.  Reply through the incoming scope so the requesting
+    // companion can actually receive it.
+    sendFloodReply(packet, delay_millis, reply_to->getPathHashSize());
+  } else {
+    sendFloodScoped(default_scope, packet, delay_millis,
+                    _prefs.path_hash_mode + 1);
+  }
+  return true;
+}
+
+bool MyMesh::sendAlertToChannel(const char* text) {
+  const mesh::GroupChannel* channel = nullptr;
+  if (alert_destination == AlertDestination::PUBLIC) {
+    channel = &public_alert_channel;
+  } else if (alert_destination == AlertDestination::CUSTOM_CHANNEL &&
+             custom_alert_channel_configured) {
+    channel = &custom_alert_channel;
+  }
+  return channel && sendGroupText(*channel, text,
+                                  pending_alert_channel_timestamp);
+}
+
+bool MyMesh::sendChannelCliReply(const char* text,
+                                 const mesh::Packet* incoming_packet,
+                                 uint32_t incoming_timestamp) {
+  if (alert_destination != AlertDestination::CUSTOM_CHANNEL ||
+      !custom_alert_channel_configured) {
+    return false;
+  }
+  // Stable per-node slots keep several repeaters on the same maintenance
+  // channel from answering at the same instant.  The packet is queued, so
+  // this adds no blocking delay to the repeater loop.
+  const uint16_t identity_slot =
+      (((uint16_t)self_id.pub_key[0] << 8) | self_id.pub_key[1]) % 16;
+  const uint32_t delay_millis = 350U + (uint32_t)identity_slot * 450U;
+  // The P1 may boot with an untrusted placeholder clock until its first GPS
+  // fix.  Reuse the companion's recent channel-message timestamp so its UI
+  // does not file a valid reply years back in the conversation history.
+  uint32_t reply_timestamp = incoming_timestamp + 1U;
+  if (incoming_timestamp == 0 || reply_timestamp == 0) {
+    reply_timestamp = getRTCClock()->getCurrentTimeUnique();
+  }
+  return sendGroupText(custom_alert_channel, text,
+                       reply_timestamp, delay_millis, incoming_packet);
+}
+
+void MyMesh::handleChannelCli(const char* command, char* reply,
+                              size_t reply_size) {
+  if (!reply || reply_size == 0) return;
+  reply[0] = '\0';
+  while (command && *command == ' ') command++;
+
+  if (!command || *command == '\0' || strcmp(command, "help") == 0) {
+    snprintf(reply, reply_size,
+             "CLI OK: !p1 status|battery|gps|version|alerts|help");
+    return;
+  }
+  if (strcmp(command, "version") == 0) {
+    snprintf(reply, reply_size, "CLI OK version: %s (%s)", FIRMWARE_VERSION,
+             FIRMWARE_BUILD_DATE);
+    return;
+  }
+  if (strcmp(command, "battery") == 0 || strcmp(command, "power") == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (!board.getPowerStatus(status)) {
+      snprintf(reply, reply_size, "CLI ERR battery: status indisponible");
+      return;
+    }
+    snprintf(reply, reply_size,
+             "CLI OK battery: %s; %u mV; alerte %u; veille %u; bas %lus/%lus",
+             status.state ? status.state : "?", status.battery_mv,
+             early_alert_mv, status.shutdown_mv,
+             (unsigned long)status.low_seconds,
+             (unsigned long)status.shutdown_delay_seconds);
+    return;
+  }
+  if (strcmp(command, "gps") == 0) {
+    char gps_status[120];
+    if (!sensors.getGpsScheduleStatus(gps_status, sizeof(gps_status))) {
+      snprintf(reply, reply_size, "CLI ERR gps: status indisponible");
+      return;
+    }
+    snprintf(reply, reply_size, "CLI OK gps: %s", gps_status);
+    return;
+  }
+  if (strcmp(command, "alerts") == 0) {
+    snprintf(reply, reply_size,
+             "CLI OK alerts: canal=%s; alerte=%u mV; veille=%u mV; radio-cli=lecture seule",
+             alertDestinationName(), early_alert_mv, PWR_SHUTDOWN_MV);
+    return;
+  }
+  if (strcmp(command, "status") == 0) {
+    mesh::MainBoard::PowerStatus status;
+    char gps_status[72] = "indisponible";
+    sensors.getGpsScheduleStatus(gps_status, sizeof(gps_status));
+    if (!board.getPowerStatus(status)) {
+      snprintf(reply, reply_size, "CLI ERR status: alimentation indisponible");
+      return;
+    }
+    snprintf(reply, reply_size, "CLI OK status: %s %u mV; GPS %s",
+             status.state ? status.state : "?", status.battery_mv, gps_status);
+    return;
+  }
+
+  snprintf(reply, reply_size, "CLI ERR: commande inconnue; envoyer !p1 help");
+}
+
 bool MyMesh::sendAlertTo(size_t index, const char* text, uint8_t attempt) {
   const uint8_t* public_key = alert_recipients.keyAt(index);
   if (!public_key || !text) return false;
@@ -1038,28 +1388,38 @@ bool MyMesh::sendAlertTo(size_t index, const char* text, uint8_t attempt) {
 }
 
 uint8_t MyMesh::startOperationalAlert(const char* text, bool replace_active) {
-  if (!text || !*text || alert_recipients.count() == 0) return 0;
+  const uint8_t destination_count = alertDestinationCount();
+  if (!text || !*text || destination_count == 0) return 0;
 
   if (pending_alert_active && !replace_active) {
     StrHelper::strncpy(deferred_alert_text, text, sizeof(deferred_alert_text));
     deferred_alert_pending = true;
-    return (uint8_t)alert_recipients.count();
+    return destination_count;
   }
   if (replace_active) {
     pending_alert_active = false;
     deferred_alert_pending = false;
     memset(pending_alert_waiting, 0, sizeof(pending_alert_waiting));
+    pending_alert_channel_waiting = false;
   }
 
   StrHelper::strncpy(pending_alert_text, text, sizeof(pending_alert_text));
   memset(pending_alert_timestamp, 0, sizeof(pending_alert_timestamp));
   memset(pending_alert_waiting, 0, sizeof(pending_alert_waiting));
+  pending_alert_channel_waiting = false;
+  pending_alert_channel_timestamp = 0;
   uint8_t sent = 0;
-  for (size_t i = 0; i < alert_recipients.count(); i++) {
-    // A per-recipient timestamp makes the truncated ACK hash unambiguous even
-    // though every destination receives the same alert text.
-    pending_alert_timestamp[i] = getRTCClock()->getCurrentTimeUnique();
-    if (sendAlertTo(i, pending_alert_text, 0)) sent++;
+  if (alert_destination == AlertDestination::PRIVATE) {
+    for (size_t i = 0; i < alert_recipients.count(); i++) {
+      // A per-recipient timestamp makes the truncated ACK hash unambiguous even
+      // though every destination receives the same alert text.
+      pending_alert_timestamp[i] = getRTCClock()->getCurrentTimeUnique();
+      if (sendAlertTo(i, pending_alert_text, 0)) sent++;
+    }
+  } else {
+    pending_alert_channel_timestamp = getRTCClock()->getCurrentTimeUnique();
+    pending_alert_channel_waiting = sendAlertToChannel(pending_alert_text);
+    if (pending_alert_channel_waiting) sent++;
   }
   pending_alert_active = sent > 0;
   pending_alert_retried = false;
@@ -1076,10 +1436,14 @@ void MyMesh::serviceOperationalAlerts() {
     for (size_t i = 0; i < alert_recipients.count(); i++) {
       if (pending_alert_waiting[i]) sendAlertTo(i, pending_alert_text, 1);
     }
+    if (pending_alert_channel_waiting) {
+      sendAlertToChannel(pending_alert_text);
+    }
   }
   if (millisHasNowPassed(pending_alert_finish_at)) {
     pending_alert_active = false;
     memset(pending_alert_waiting, 0, sizeof(pending_alert_waiting));
+    pending_alert_channel_waiting = false;
     if (deferred_alert_pending) {
       char next[MAX_ALERT_TEXT_LEN + 1];
       StrHelper::strncpy(next, deferred_alert_text, sizeof(next));
@@ -1088,6 +1452,63 @@ void MyMesh::serviceOperationalAlerts() {
       startOperationalAlert(next);
     }
   }
+}
+
+int MyMesh::searchChannelsByHash(const uint8_t* hash,
+                                 mesh::GroupChannel channels[],
+                                 int max_matches) {
+  // The radio CLI is intentionally unavailable on Public and in legacy
+  // private-alert mode.  A valid custom-channel PSK is required to decrypt a
+  // command; the one-byte hash merely selects the candidate key.
+  if (!hash || !channels || max_matches <= 0 ||
+      alert_destination != AlertDestination::CUSTOM_CHANNEL ||
+      !custom_alert_channel_configured ||
+      memcmp(hash, custom_alert_channel.hash, PATH_HASH_SIZE) != 0) {
+    return 0;
+  }
+  channels[0] = custom_alert_channel;
+  return 1;
+}
+
+void MyMesh::onGroupDataRecv(mesh::Packet* packet, uint8_t type,
+                             const mesh::GroupChannel& channel, uint8_t* data,
+                             size_t len) {
+  (void)packet;
+  (void)channel;
+  if (type != PAYLOAD_TYPE_GRP_TXT || !data || len < 5) return;
+  if ((data[4] >> 2) != TXT_TYPE_PLAIN) return;
+
+  uint32_t incoming_timestamp = 0;
+  memcpy(&incoming_timestamp, data, sizeof(incoming_timestamp));
+
+  // Mesh reserves enough scratch space for this terminator; this mirrors the
+  // standard companion-radio group text decoder.
+  data[len] = '\0';
+  const char* message = (const char*)&data[5];
+  const char* sender_separator = strstr(message, ": ");
+  if (sender_separator) message = sender_separator + 2;
+  while (*message == ' ') message++;
+
+  if (strncmp(message, "!p1", 3) != 0 ||
+      !(message[3] == '\0' || message[3] == ' ')) {
+    return;
+  }
+
+  // Replayed packets are normally removed by the Mesh seen-packet table.  A
+  // second guard bounds radio replies even if a companion creates fresh
+  // timestamps for the same command.
+  const uint32_t now = millis();
+  if (last_channel_cli_at != 0 &&
+      (uint32_t)(now - last_channel_cli_at) < 3000U) {
+    return;
+  }
+  last_channel_cli_at = now;
+
+  const char* command = message + 3;
+  while (*command == ' ') command++;
+  char reply[MAX_ALERT_TEXT_LEN + 1];
+  handleChannelCli(command, reply, sizeof(reply));
+  sendChannelCliReply(reply, packet, incoming_timestamp);
 }
 
 void MyMesh::onAckRecv(mesh::Packet* packet, uint32_t ack_crc) {
@@ -1148,12 +1569,23 @@ void MyMesh::sendBootAlert(uint16_t battery_mv, const char* reset_reason,
   startOperationalAlert(text);
 }
 
+void MyMesh::sendGpsFixAlert(uint32_t acquisition_seconds,
+                             int32_t satellites) {
+  char text[MAX_ALERT_TEXT_LEN + 1];
+  snprintf(text, sizeof(text),
+           "P1 GPS recupere: fix en %lu s; %ld satellite(s); position actualisee.",
+           (unsigned long)acquisition_seconds, (long)satellites);
+  startOperationalAlert(text);
+}
+
 void MyMesh::handleAlertCommand(const char* command, char* reply) {
   while (*command == ' ') command++;
 
   if (*command == '\0' || strcmp(command, "list") == 0 ||
       strcmp(command, "status") == 0) {
-    int used = snprintf(reply, 160, "%u/%u recipient(s); early=%u/%u mV",
+    int used = snprintf(reply, 160,
+                        "dest=%s; private=%u/%u; early=%u/%u mV",
+                        alertDestinationName(),
                         (unsigned)alert_recipients.count(),
                         (unsigned)alert_recipients.capacity(), early_alert_mv,
                         early_alert_clear_mv);
@@ -1164,6 +1596,100 @@ void MyMesh::handleAlertCommand(const char* command, char* reply) {
       used += snprintf(reply + used, 160 - used, "; %u:%.12s...",
                        (unsigned)(i + 1), hex);
     }
+    return;
+  }
+
+  if (strcmp(command, "public") == 0 || strcmp(command, "private") == 0) {
+    const AlertDestination previous = alert_destination;
+    alert_destination = strcmp(command, "public") == 0
+                            ? AlertDestination::PUBLIC
+                            : AlertDestination::PRIVATE;
+    if (!saveAlertChannelConfig()) {
+      alert_destination = previous;
+      strcpy(reply, "ERR - alert destination not saved");
+      return;
+    }
+    snprintf(reply, 160, "OK - battery alerts -> %s",
+             alertDestinationName());
+    return;
+  }
+
+  if (strcmp(command, "channel") == 0) {
+    if (!custom_alert_channel_configured) {
+      strcpy(reply, "ERR - configure: bat low channel NAME PSK");
+      return;
+    }
+    const AlertDestination previous = alert_destination;
+    alert_destination = AlertDestination::CUSTOM_CHANNEL;
+    if (!saveAlertChannelConfig()) {
+      alert_destination = previous;
+      strcpy(reply, "ERR - alert destination not saved");
+      return;
+    }
+    snprintf(reply, 160, "OK - battery alerts -> %s",
+             custom_alert_channel_name);
+    return;
+  }
+
+  if (strncmp(command, "channel ", 8) == 0) {
+    const char* definition = command + 8;
+    const char* final_space = strrchr(definition, ' ');
+    if (!final_space || final_space == definition || !final_space[1]) {
+      strcpy(reply, "ERR - bat low channel NAME PSK(base64|hex)");
+      return;
+    }
+    size_t name_len = (size_t)(final_space - definition);
+    while (name_len > 0 && definition[name_len - 1] == ' ') name_len--;
+    if (name_len == 0 || name_len > MAX_ALERT_CHANNEL_NAME_LEN) {
+      strcpy(reply, "ERR - channel name must be 1..31 characters");
+      return;
+    }
+    bool valid_name = true;
+    for (size_t i = 0; i < name_len; i++) {
+      valid_name = valid_name && (uint8_t)definition[i] >= 32 &&
+                   (uint8_t)definition[i] <= 126;
+    }
+    if (!valid_name) {
+      strcpy(reply, "ERR - invalid channel name");
+      return;
+    }
+
+    const AlertDestination previous_destination = alert_destination;
+    const mesh::GroupChannel previous_channel = custom_alert_channel;
+    const bool previous_configured = custom_alert_channel_configured;
+    char previous_name[sizeof(custom_alert_channel_name)];
+    char previous_key[sizeof(custom_alert_channel_key)];
+    StrHelper::strncpy(previous_name, custom_alert_channel_name,
+                       sizeof(previous_name));
+    StrHelper::strncpy(previous_key, custom_alert_channel_key,
+                       sizeof(previous_key));
+
+    char name[MAX_ALERT_CHANNEL_NAME_LEN + 1];
+    memcpy(name, definition, name_len);
+    name[name_len] = '\0';
+    if (!configureAlertChannel(custom_alert_channel, final_space + 1,
+                               custom_alert_channel_key,
+                               sizeof(custom_alert_channel_key))) {
+      strcpy(reply, "ERR - PSK must decode to 16/32 bytes (base64 or hex)");
+      return;
+    }
+    StrHelper::strncpy(custom_alert_channel_name, name,
+                       sizeof(custom_alert_channel_name));
+    custom_alert_channel_configured = true;
+    alert_destination = AlertDestination::CUSTOM_CHANNEL;
+    if (!saveAlertChannelConfig()) {
+      alert_destination = previous_destination;
+      custom_alert_channel = previous_channel;
+      custom_alert_channel_configured = previous_configured;
+      StrHelper::strncpy(custom_alert_channel_name, previous_name,
+                         sizeof(custom_alert_channel_name));
+      StrHelper::strncpy(custom_alert_channel_key, previous_key,
+                         sizeof(custom_alert_channel_key));
+      strcpy(reply, "ERR - channel configuration not saved");
+      return;
+    }
+    snprintf(reply, 160, "OK - battery alerts -> %s; PSK hidden",
+             custom_alert_channel_name);
     return;
   }
 
@@ -1289,13 +1815,29 @@ void MyMesh::handleAlertCommand(const char* command, char* reply) {
              "P1 test alerte: radio operationnelle, batterie %u mV.",
              board.getBattMilliVolts());
     const uint8_t sent = startOperationalAlert(text);
-    snprintf(reply, 160, sent ? "OK - test queued for %u recipient(s)"
-                              : "ERR - no alert queued",
-             sent);
+    snprintf(reply, 160,
+             sent ? "OK - test queued -> %s" : "ERR - no alert queued",
+             alertDestinationName());
     return;
   }
 
-  strcpy(reply, "ERR - alert list|get N|add KEY|remove N|clear|threshold|test");
+  // Once a custom channel has been provisioned, its human-readable name is a
+  // direct selector: for example `bat low FR SV`.
+  if (custom_alert_channel_configured &&
+      strcmp(command, custom_alert_channel_name) == 0) {
+    const AlertDestination previous = alert_destination;
+    alert_destination = AlertDestination::CUSTOM_CHANNEL;
+    if (!saveAlertChannelConfig()) {
+      alert_destination = previous;
+      strcpy(reply, "ERR - alert destination not saved");
+      return;
+    }
+    snprintf(reply, 160, "OK - battery alerts -> %s",
+             custom_alert_channel_name);
+    return;
+  }
+
+  strcpy(reply, "ERR - bat low status|public|private|channel NAME PSK|NAME|test");
 }
 #endif
 
@@ -1393,6 +1935,14 @@ void MyMesh::begin(FILESYSTEM *fs) {
   }
   if (!loadAlertConfig()) {
     Serial.println("ERROR: alert threshold config unavailable or corrupt; defaults active");
+  }
+  if (!loadAlertChannelConfig()) {
+    Serial.println("ERROR: alert channel config corrupt; private destination active");
+  }
+#endif
+#if defined(P1_EVENT_LOG)
+  if (!loadGpsPowerGuard()) {
+    Serial.println("ERROR: GPS powerguard config corrupt; economy guard active");
   }
 #endif
   // TODO: key_store.begin();
@@ -1707,6 +2257,11 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
 #endif
 
 #if defined(P1_POWER_ALERTS)
+  if (strncmp(command, "bat low", 7) == 0 &&
+      (command[7] == '\0' || command[7] == ' ')) {
+    handleAlertCommand(command + 7, reply);
+    return;
+  }
   if (strncmp(command, "alert", 5) == 0 &&
       (command[5] == '\0' || command[5] == ' ')) {
     handleAlertCommand(command + 5, reply);
@@ -1715,6 +2270,11 @@ void MyMesh::handleCommand(uint32_t sender_timestamp, char *command, char *reply
 #endif
 
 #if defined(P1_EVENT_LOG)
+  if (strncmp(command, "gps powerguard", 14) == 0 &&
+      (command[14] == 0 || command[14] == ' ')) {
+    handleGpsPowerGuardCommand(command + 14, reply);
+    return;
+  }
   if (sender_timestamp == 0 && strncmp(command, "gps override", 12) == 0 &&
       (command[12] == 0 || command[12] == ' ')) {
     const char* argument = command + 12;
