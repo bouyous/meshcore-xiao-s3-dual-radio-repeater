@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://meshcore-dev.github.io/meshcore/nrf52_power_management/">
+        <link rel="canonical" href="https://meshcore-dev.github.io/meshcore/sensecap_solar_recovery/">
       
       
-        <link rel="prev" href="../kiss_modem_protocol/">
+        <link rel="prev" href="../qr_codes/">
       
       
-        <link rel="next" href="../number_allocations/">
+        <link rel="next" href="../stats_binary_frames/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>nRF52 Power Management - MeshCore Docs</title>
+        <title>SenseCAP Solar Node P1 runtime battery recovery - MeshCore Docs</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nrf52-power-management" class="md-skip">
+        <a href="#sensecap-solar-node-p1-runtime-battery-recovery" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              nRF52 Power Management
+              SenseCAP Solar Node P1 runtime battery recovery
             
           </span>
         </div>
@@ -763,37 +763,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    nRF52 Power Management
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../nrf52_power_management/" class="md-nav__link">
         
   
   
@@ -809,225 +782,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Features
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Features">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#boot-voltage-protection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boot Voltage Protection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#voltage-wake-lpcomp-vbus" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Voltage Wake (LPCOMP + VBUS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#early-boot-register-capture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Early Boot Register Capture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#shutdown-reason-tracking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Shutdown Reason Tracking
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-boards" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Boards
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#technical-details" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Technical Details
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Technical Details">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#early-boot-capture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Early Boot Capture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#board-implementation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Board Implementation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#voltage-wake-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Voltage Wake Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#softdevice-compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SoftDevice Compatibility
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Commands
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#debug-output" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Debug Output
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#phase-2-planned" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase 2 (Planned)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        References
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1144,10 +898,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../sensecap_solar_recovery/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SenseCAP Solar Node P1 runtime battery recovery
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1163,6 +944,81 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behaviour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#voltage-wake-limitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Voltage wake limitation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistent-operational-event-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Persistent operational event log
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mandatory-bench-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mandatory bench validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1385,10 +1241,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#behaviour" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Behaviour
       
     </span>
   </a>
@@ -1396,71 +1252,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#features" class="md-nav__link">
+  <a href="#voltage-wake-limitation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Features
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Features">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#boot-voltage-protection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boot Voltage Protection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#voltage-wake-lpcomp-vbus" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Voltage Wake (LPCOMP + VBUS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#early-boot-register-capture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Early Boot Register Capture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#shutdown-reason-tracking" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Shutdown Reason Tracking
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-boards" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Boards
+        Voltage wake limitation
       
     </span>
   </a>
@@ -1468,82 +1263,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#technical-details" class="md-nav__link">
+  <a href="#cli-diagnostics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Technical Details
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Technical Details">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#architecture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#early-boot-capture" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Early Boot Capture
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#board-implementation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Board Implementation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#voltage-wake-configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Voltage Wake Configuration
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#softdevice-compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SoftDevice Compatibility
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cli-commands" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CLI Commands
+        CLI diagnostics
       
     </span>
   </a>
@@ -1551,10 +1274,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug-output" class="md-nav__link">
+  <a href="#persistent-operational-event-log" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Debug Output
+        Persistent operational event log
       
     </span>
   </a>
@@ -1562,21 +1285,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-2-planned" class="md-nav__link">
+  <a href="#mandatory-bench-validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 2 (Planned)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        References
+        Mandatory bench validation
       
     </span>
   </a>
@@ -1600,7 +1312,7 @@
 
 
   
-    <a href="https://github.com/meshcore-dev/meshcore/edit/main/docs/nrf52_power_management.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/meshcore-dev/meshcore/edit/main/docs/sensecap_solar_recovery.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1608,425 +1320,159 @@
   
 
 
-<h1 id="nrf52-power-management">nRF52 Power Management</h1>
-<h2 id="overview">Overview</h2>
-<p>The nRF52 Power Management module provides battery protection features to prevent over-discharge, minimise likelihood of brownout and flash corruption conditions existing, and enable safe voltage-based recovery.</p>
-<h2 id="features">Features</h2>
-<h3 id="boot-voltage-protection">Boot Voltage Protection</h3>
+<h1 id="sensecap-solar-node-p1-runtime-battery-recovery">SenseCAP Solar Node P1 runtime battery recovery</h1>
+<p>This target-specific extension is based on MeshCore repeater v1.17.0,
+commit <code>727fc0512ce08bfd7b499e46daa7fca6eeec730d</code>.</p>
+<h2 id="behaviour">Behaviour</h2>
 <ul>
-<li>Checks battery voltage immediately after boot and before mesh operations commence</li>
-<li>If voltage is below a configurable threshold (e.g., 3300mV), the device configures voltage wake (LPCOMP + VBUS) and enters protective shutdown (SYSTEMOFF)</li>
-<li>Prevents boot loops when battery is critically low</li>
-<li>Skipped when external power (USB VBUS) is detected</li>
+<li>Battery voltage is sampled every 30 seconds using a discarded conversion
+  followed by a seven-sample median and a 40 us SAADC acquisition time.</li>
+<li>The GPS is enabled for the first hour after boot and then for one hour every
+  24 hours. It is off for the other 23 hours.</li>
+<li>A local serial command can temporarily extend the GPS acquisition window or
+  persistently select a seasonal mode. <code>gps override on</code> is the summer mode
+  (continuous GPS); <code>gps override off</code> is the winter mode (daily one-hour
+  window). Both choices survive resets and power loss. A timed override such
+  as <code>gps override 96h</code> deliberately saves winter mode and returns to the
+  daily schedule when its timer expires.</li>
+<li>The first valid fix in each daily window triggers one flood advertisement;
+  the GPS parser also refreshes the RTC from a fresh fix.</li>
+<li>Below 3500 mV, the state becomes <code>economy</code> and the GPS schedule is suppressed.</li>
+<li>At or above 3550 mV, <code>normal</code> resumes. The GPS starts only if the current
+  daily window is still open.</li>
+<li>Below 3300 mV, the state becomes <code>critical</code>.</li>
+<li>The critical timer is cleared only at or above 3350 mV.</li>
+<li>At or below 3350 mV, an encrypted pre-shutdown alert is sent to every
+  configured public key while the node and LoRa radio are still fully active.
+  This alert rearms after the battery reaches 3400 mV.</li>
+<li>After 600 seconds continuously in the critical band, GPS and LoRa are shut
+  down. A final priority alert gets a 12-second radio grace period (one retry),
+  then <code>LOW_VOLTAGE</code> is stored in GPREGRET2, LPCOMP/VBUS wake is armed and the
+  nRF52840 enters SYSTEMOFF.</li>
+<li>After a complete boot, an encrypted startup alert reports measured voltage,
+  reset cause and the previous shutdown reason.</li>
+<li>USB/external power suppresses runtime low-voltage shutdown.</li>
+<li>Invalid ADC readings outside 1000..5000 mV cannot directly request shutdown;
+  a physically possible deeply discharged battery remains critical.</li>
 </ul>
-<h3 id="voltage-wake-lpcomp-vbus">Voltage Wake (LPCOMP + VBUS)</h3>
+<p>The power-state values are compile-time overrides in
+<code>variants/sensecap_solar/variant.h</code>. Alert recipients and the 3350/3400 mV
+alert hysteresis are persistent and can be changed through the authenticated
+CLI without rebuilding the firmware.</p>
+<h2 id="voltage-wake-limitation">Voltage wake limitation</h2>
+<p>The official XIAO nRF52840 Plus battery divider is 1 MOhm / 499 kOhm on AIN7.
+The available LPCOMP steps do not include an exact 3.60 V battery threshold.
+The selected 3/8 VDD reference is the only practical step and gives a nominal
+rising threshold around 3.77 V including typical comparator hysteresis. Device,
+resistor and regulator tolerances make a bench measurement mandatory.</p>
+<p>A requested 3.45 V System OFF threshold cannot be selected in firmware with
+this divider. The next lower LPCOMP step is 5/16 VDD, approximately 3.15 V at
+the battery including typical hysteresis. It is below the 3.30 V shutdown point
+and can cause immediate wake or a low-voltage boot loop, so this build does not
+use it. An exact test threshold needs either a resistor/reference modification
+or a higher-consumption System ON polling mode that would not validate the real
+System OFF recovery path.</p>
+<p>The separate <code>SenseCap_Solar_repeater_test345</code> profile deliberately implements
+that temporary polling mode: after the normal 3.30 V / 10 minute shutdown
+decision it switches off LoRa, GPS and LEDs, sleeps in low-power SYSTEM ON,
+samples VBAT every 30 seconds and resets after three consecutive readings at or
+above 3.45 V. It is intended only to accelerate solar testing. The field profile
+continues to use true SYSTEMOFF and LPCOMP at the nominal ~3.77 V threshold.</p>
+<p><code>VBAT_ENABLE</code> (P0.14) uses the nRF52840 S0D1 open-drain mode. It is kept LOW
+for voltage-recovery SYSTEMOFF, which follows Seeed's sink-only requirement,
+keeps the divider available to LPCOMP and avoids over-voltage on P0.31. The
+divider costs about 2.5 uA while voltage wake is armed; it is released to
+high-impedance for user-requested shutdown.</p>
+<h2 id="cli-diagnostics">CLI diagnostics</h2>
+<pre><code class="language-text">get power.state
+get power.vbat
+get power.lowtime
+get power.wakethreshold
+get power.status
+get power.temp
+get power.chargeguard
+get gps.schedule
+gps override status
+gps override 24h
+gps override 96h
+gps override on
+gps override off
+alert status
+alert threshold
+alert test
+</code></pre>
+<p>Timed values from 1 to 168 hours are accepted. The override only opens the GPS
+acquisition window; a low-battery economy or critical state still forces the
+GPS off and therefore always has priority. <code>on</code> and <code>off</code> are stored in a
+separate one-byte LittleFS marker so changing season does not rewrite the main
+MeshCore preferences. These commands are deliberately local-serial only.</p>
+<p>Operational alert commands (<code>alert list</code>, <code>alert get</code>, <code>alert add</code>,
+<code>alert remove</code>, <code>alert clear</code>, <code>alert threshold</code>, and <code>alert test</code>) are also
+accepted over an authenticated MeshCore administrator CLI session. The list
+holds up to four 32-byte public keys. Messages are individually encrypted;
+unknown routes use encrypted flood delivery and known ACL routes use direct
+delivery.</p>
+<p>The existing commands remain available:</p>
+<pre><code class="language-text">get pwrmgt.support
+get pwrmgt.source
+get pwrmgt.bootreason
+get pwrmgt.bootmv
+</code></pre>
+<h2 id="persistent-operational-event-log">Persistent operational event log</h2>
+<p>The repeater profiles keep the latest 64 operational transitions in
+<code>/p1_events.bin</code>. Each fixed-size record has a sequence number, boot ID,
+uptime, two event values and a CRC. An interrupted write is ignored at the next
+boot without invalidating older slots. Only transitions are written, not the
+30-second voltage samples, to limit flash wear.</p>
+<p>Recorded events include:</p>
 <ul>
-<li>Configures the nRF52's Low Power Comparator (LPCOMP) before entering SYSTEMOFF</li>
-<li>Enables USB VBUS detection so external power can wake the device</li>
-<li>Device automatically wakes when battery voltage rises above recovery threshold or when VBUS is detected</li>
+<li>boot, reset reason, preceding shutdown reason and boot voltage;</li>
+<li>successful completion of initialization;</li>
+<li>watchdog/CPU lockup and detectable radio/sensor initialization failures;</li>
+<li>normal/economy/critical transitions, final shutdown and test-profile solar
+  recovery reset;</li>
+<li>GPS detection, daily window start/end, first fix, acquisition time, satellite
+  count and RTC synchronization, plus GPS override start/end and duration;</li>
+<li>a no-fix GPS window as an explicit error-marked event.</li>
 </ul>
-<h3 id="early-boot-register-capture">Early Boot Register Capture</h3>
-<ul>
-<li>Captures RESETREAS (reset reason) and GPREGRET2 (shutdown reason) before SystemInit() clears them</li>
-<li>Allows firmware to determine why it booted (cold boot, watchdog, LPCOMP wake, etc.)</li>
-<li>Allows firmware to determine why it last shut down (user request, low voltage, boot protection)</li>
-</ul>
-<h3 id="shutdown-reason-tracking">Shutdown Reason Tracking</h3>
-<p>Shutdown reason codes (stored in GPREGRET2):</p>
-<table>
-<thead>
-<tr>
-<th>Code</th>
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0x00</td>
-<td>NONE</td>
-<td>Normal boot / no previous shutdown</td>
-</tr>
-<tr>
-<td>0x4C</td>
-<td>LOW_VOLTAGE</td>
-<td>Runtime low voltage threshold reached</td>
-</tr>
-<tr>
-<td>0x55</td>
-<td>USER</td>
-<td>User requested powerOff()</td>
-</tr>
-<tr>
-<td>0x42</td>
-<td>BOOT_PROTECT</td>
-<td>Boot voltage protection triggered</td>
-</tr>
-</tbody>
-</table>
-<h2 id="supported-boards">Supported Boards</h2>
-<table>
-<thead>
-<tr>
-<th>Board</th>
-<th>Implemented</th>
-<th>LPCOMP wake</th>
-<th>VBUS wake</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Seeed Studio XIAO nRF52840 (<code>xiao_nrf52</code>)</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr>
-<td>RAK4631 (<code>rak4631</code>)</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr>
-<td>Heltec T114 (<code>heltec_t114</code>)</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr>
-<td>GAT562 Mesh Watch13</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr>
-<td>Promicro nRF52840</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>RAK WisMesh Tag</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>Heltec Mesh Solar</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>LilyGo T-Echo / T-Echo Lite</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>SenseCAP Solar</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-</tr>
-<tr>
-<td>WIO Tracker L1 / L1 E-Ink</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>WIO WM1110</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>Mesh Pocket</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>Nano G2 Ultra</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>ThinkNode M1/M3/M6</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>T1000-E</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>Ikoka Nano/Stick/Handheld (nRF)</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>Keepteen LT1</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-<tr>
-<td>Minewsemi ME25LS01</td>
-<td>No</td>
-<td>No</td>
-<td>No</td>
-</tr>
-</tbody>
-</table>
-<p>Notes:
-- "Implemented" reflects Phase 1 (boot lockout + shutdown reason capture).
-- User power-off on Heltec T114 does not enable LPCOMP wake.
-- VBUS detection is used to skip boot lockout on external power, and VBUS wake is configured alongside LPCOMP when supported hardware exposes VBUS to the nRF52.</p>
-<h2 id="technical-details">Technical Details</h2>
-<h3 id="architecture">Architecture</h3>
-<p>The power management functionality is integrated into the <code>NRF52Board</code> base class in <code>src/helpers/NRF52Board.cpp</code>. Board variants provide hardware-specific configuration via a <code>PowerMgtConfig</code> struct and override <code>initiateShutdown(uint8_t reason)</code> to perform board-specific power-down work and conditionally enable voltage wake (LPCOMP + VBUS).</p>
-<h3 id="early-boot-capture">Early Boot Capture</h3>
-<p>A static constructor with priority 101 in <code>NRF52Board.cpp</code> captures the RESETREAS and GPREGRET2 registers before:
-- SystemInit() (priority 102) - which clears RESETREAS
-- Static C++ constructors (default priority 65535)</p>
-<p>This ensures we capture the true reset reason before any initialisation code runs.</p>
-<h3 id="board-implementation">Board Implementation</h3>
-<p>To enable power management on a board variant:</p>
+<p>The fallback clock is not treated as UTC. Entries first carry uptime only. A
+later valid GPS timestamp anchors the same boot session, and earlier entries
+are displayed with an estimated UTC timestamp marked by <code>~</code>. Implausible NMEA
+dates are rejected. Commands are local-serial only:</p>
+<pre><code class="language-text">eventlog
+eventlog status
+eventlog clear
+</code></pre>
+<p>The filesystem is mounted before radio initialization so a radio failure can
+be persisted. A failure to mount the filesystem itself cannot be written to
+that same filesystem; it is printed as a fatal serial error instead. A boot
+that never reaches <code>BOOT_COMPLETE</code> also remains visible in the journal.</p>
+<h2 id="mandatory-bench-validation">Mandatory bench validation</h2>
+<p>Use a current-limited programmable supply in place of the battery and keep a
+known recovery path (UF2 bootloader or SWD). Do not connect a Li-ion pack while
+sweeping the supply.</p>
 <ol>
-<li>
-<p><strong>Enable in platformio.ini</strong>:
-   <code>ini
-   -D NRF52_POWER_MANAGEMENT</code></p>
-</li>
-<li>
-<p><strong>Define configuration in variant.h</strong>:
-   <code>c
-   #define PWRMGT_VOLTAGE_BOOTLOCK    3300   // Won't boot below this voltage (mV)
-   #define PWRMGT_LPCOMP_AIN          7      // AIN channel for voltage sensing
-   #define PWRMGT_LPCOMP_REFSEL       2      // REFSEL (0-6=1/8..7/8, 7=ARef, 8-15=1/16..15/16)</code></p>
-</li>
-<li>
-<p><strong>Implement in board .cpp file</strong>:
-   ```cpp
-   #ifdef NRF52_POWER_MANAGEMENT
-   const PowerMgtConfig power_config = {
-     .lpcomp_ain_channel = PWRMGT_LPCOMP_AIN,
-     .lpcomp_refsel = PWRMGT_LPCOMP_REFSEL,
-     .voltage_bootlock = PWRMGT_VOLTAGE_BOOTLOCK
-   };</p>
-</li>
+<li>Confirm normal boot and LoRa/BLE/CLI operation around 3.8 V.</li>
+<li>Briefly dip below 3.3 V and confirm no shutdown.</li>
+<li>Hold below 3.3 V for 10 minutes and confirm a clean SYSTEMOFF.</li>
+<li>Increase voltage very slowly and record the actual autonomous wake voltage.</li>
+<li>Confirm <code>get pwrmgt.bootreason</code> reports LPCOMP and Low Voltage.</li>
+<li>Repeat at the temperature extremes that the electronics (not the cells) can
+   safely withstand.</li>
 </ol>
-<p>void MyBoard::initiateShutdown(uint8_t reason) {
-     // Board-specific shutdown preparation (e.g., disable peripherals)
-     bool enable_lpcomp = (reason == SHUTDOWN_REASON_LOW_VOLTAGE ||
-                           reason == SHUTDOWN_REASON_BOOT_PROTECT);</p>
-<pre><code> if (enable_lpcomp) {
-   configureVoltageWake(power_config.lpcomp_ain_channel, power_config.lpcomp_refsel);
- }
-
- enterSystemOff(reason);
-</code></pre>
-<p>}
-   #endif</p>
-<p>void MyBoard::begin() {
-     NRF52Board::begin();  // or NRF52BoardDCDC::begin()
-     // ... board setup ...</p>
-<p>#ifdef NRF52_POWER_MANAGEMENT
-     checkBootVoltage(&amp;power_config);
-   #endif
-   }
-   ```</p>
-<p>For user-initiated shutdowns, <code>powerOff()</code> remains board-specific. Power management only arms LPCOMP for automated shutdown reasons (boot protection/low voltage).</p>
-<ol>
-<li><strong>Declare override in board .h file</strong>:
-   <code>cpp
-   #ifdef NRF52_POWER_MANAGEMENT
-     void initiateShutdown(uint8_t reason) override;
-   #endif</code></li>
-</ol>
-<h3 id="voltage-wake-configuration">Voltage Wake Configuration</h3>
-<p>The LPCOMP (Low Power Comparator) is configured to:
-- Monitor the specified AIN channel (0-7 corresponding to P0.02-P0.05, P0.28-P0.31)
-- Compare against VDD fraction reference (REFSEL: 0-6=1/8..7/8, 7=ARef, 8-15=1/16..15/16)
-- Detect UP events (voltage rising above threshold)
-- Use 50mV hysteresis for noise immunity
-- Wake the device from SYSTEMOFF when triggered</p>
-<p>VBUS wake is enabled via the POWER peripheral USBDETECTED event whenever <code>configureVoltageWake()</code> is used. This requires USB VBUS to be routed to the nRF52 (typical on nRF52840 boards with native USB).</p>
-<p><strong>LPCOMP Reference Selection (PWRMGT_LPCOMP_REFSEL)</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>REFSEL</th>
-<th>Fraction</th>
-<th>VBAT @ 1M/1M divider (VDD=3.0-3.3)</th>
-<th>VBAT @ 1.5M/1M divider (VDD=3.0-3.3)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>0</td>
-<td>1/8</td>
-<td>0.75-0.82 V</td>
-<td>0.94-1.03 V</td>
-</tr>
-<tr>
-<td>1</td>
-<td>2/8</td>
-<td>1.50-1.65 V</td>
-<td>1.88-2.06 V</td>
-</tr>
-<tr>
-<td>2</td>
-<td>3/8</td>
-<td>2.25-2.47 V</td>
-<td>2.81-3.09 V</td>
-</tr>
-<tr>
-<td>3</td>
-<td>4/8</td>
-<td>3.00-3.30 V</td>
-<td>3.75-4.12 V</td>
-</tr>
-<tr>
-<td>4</td>
-<td>5/8</td>
-<td>3.75-4.12 V</td>
-<td>4.69-5.16 V</td>
-</tr>
-<tr>
-<td>5</td>
-<td>6/8</td>
-<td>4.50-4.95 V</td>
-<td>5.62-6.19 V</td>
-</tr>
-<tr>
-<td>6</td>
-<td>7/8</td>
-<td>5.25-5.77 V</td>
-<td>6.56-7.22 V</td>
-</tr>
-<tr>
-<td>7</td>
-<td>ARef</td>
-<td>-</td>
-<td>-</td>
-</tr>
-<tr>
-<td>8</td>
-<td>1/16</td>
-<td>0.38-0.41 V</td>
-<td>0.47-0.52 V</td>
-</tr>
-<tr>
-<td>9</td>
-<td>3/16</td>
-<td>1.12-1.24 V</td>
-<td>1.41-1.55 V</td>
-</tr>
-<tr>
-<td>10</td>
-<td>5/16</td>
-<td>1.88-2.06 V</td>
-<td>2.34-2.58 V</td>
-</tr>
-<tr>
-<td>11</td>
-<td>7/16</td>
-<td>2.62-2.89 V</td>
-<td>3.28-3.61 V</td>
-</tr>
-<tr>
-<td>12</td>
-<td>9/16</td>
-<td>3.38-3.71 V</td>
-<td>4.22-4.64 V</td>
-</tr>
-<tr>
-<td>13</td>
-<td>11/16</td>
-<td>4.12-4.54 V</td>
-<td>5.16-5.67 V</td>
-</tr>
-<tr>
-<td>14</td>
-<td>13/16</td>
-<td>4.88-5.36 V</td>
-<td>6.09-6.70 V</td>
-</tr>
-<tr>
-<td>15</td>
-<td>15/16</td>
-<td>5.62-6.19 V</td>
-<td>7.03-7.73 V</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Important</strong>: For boards with a voltage divider on the battery sense pin, LPCOMP measures the divided voltage. Use:
-<code>VBAT_threshold ≈ (VDD * fraction) * divider_scale</code>, where <code>divider_scale = (Rtop + Rbottom) / Rbottom</code> (e.g., 2.0 for 1M/1M, 2.5 for 1.5M/1M, 3.0 for XIAO).</p>
-<h3 id="softdevice-compatibility">SoftDevice Compatibility</h3>
-<p>The power management code checks whether SoftDevice is enabled and uses the appropriate API:
-- When SD enabled: <code>sd_power_*</code> functions
-- When SD disabled: Direct register access (NRF_POWER-&gt;*)</p>
-<p>This ensures compatibility regardless of BLE stack state.</p>
-<h2 id="cli-commands">CLI Commands</h2>
-<p>Power management status can be queried via the CLI:</p>
-<table>
-<thead>
-<tr>
-<th>Command</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>get pwrmgt.support</code></td>
-<td>Returns "supported" or "unsupported"</td>
-</tr>
-<tr>
-<td><code>get pwrmgt.source</code></td>
-<td>Returns current power source - "battery" or "external" (5V/USB power)</td>
-</tr>
-<tr>
-<td><code>get pwrmgt.bootreason</code></td>
-<td>Returns reset and shutdown reason strings</td>
-</tr>
-<tr>
-<td><code>get pwrmgt.bootmv</code></td>
-<td>Returns boot voltage in millivolts</td>
-</tr>
-</tbody>
-</table>
-<p>On boards without power management enabled, all commands except <code>get pwrmgt.support</code> return:</p>
-<pre><code>ERROR: Power management not supported
-</code></pre>
-<h2 id="debug-output">Debug Output</h2>
-<p>When <code>MESH_DEBUG=1</code> is enabled, the power management module outputs:</p>
-<pre><code>DEBUG: PWRMGT: Reset = Wake from LPCOMP (0x20000); Shutdown = Low Voltage (0x4C)
-DEBUG: PWRMGT: Boot voltage = 3450 mV (threshold = 3300 mV)
-DEBUG: PWRMGT: LPCOMP wake configured (AIN7, ref=3/8 VDD)
-</code></pre>
-<h2 id="phase-2-planned">Phase 2 (Planned)</h2>
+<p>The installed pack NTC is connected to the CN3165 TEMP input. The CN3165
+autonomously suspends charging outside the resistor-defined temperature window,
+including while the MCU is in SYSTEMOFF. No documented P1/XIAO pin exposes this
+NTC voltage to the nRF52840, so firmware must not present the MCU die temperature
+as battery temperature or claim control over charging. <code>get power.temp</code> labels
+the MCU value explicitly and <code>get power.chargeguard</code> reports the autonomous
+hardware guard. A true firmware temperature policy requires the TEMP/NTC node
+to be routed to a spare ADC input and its resistor/NTC curve to be known.</p>
+<p>Official references:</p>
 <ul>
-<li>Runtime voltage monitoring</li>
-<li>Voltage state machine (Normal -&gt; Warning -&gt; Critical -&gt; Shutdown)</li>
-<li>Configurable thresholds</li>
-<li>Load shedding callbacks for power reduction</li>
-<li>Deep sleep integration</li>
-<li>Scheduled wake-up</li>
-<li>Extended sleep with periodic monitoring</li>
-</ul>
-<h2 id="references">References</h2>
-<ul>
-<li><a href="https://infocenter.nordicsemi.com/topic/ps_nrf52840/power.html">nRF52840 Product Specification - POWER</a></li>
-<li><a href="https://infocenter.nordicsemi.com/topic/ps_nrf52840/lpcomp.html">nRF52840 Product Specification - LPCOMP</a></li>
-<li><a href="https://infocenter.nordicsemi.com/topic/sdk_nrf5_v17.1.0/group__nrf__sdm__api.html">SoftDevice S140 API - Power Management</a></li>
+<li>https://files.seeedstudio.com/wiki/XIAO-BLE/Seeed_Studio_XIAO_nRF52840_Plus_PDF.pdf</li>
+<li>https://wiki.seeedstudio.com/meshtastic_solar_node/</li>
+<li>https://docs.nordicsemi.com/r/bundle/ps_nrf52840/page/lpcomp.html</li>
 </ul>
 
 
