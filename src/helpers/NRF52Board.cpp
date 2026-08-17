@@ -5,6 +5,10 @@
 #include <bluefruit.h>
 #include <nrf_soc.h>
 
+#ifdef USE_CC310_HW_CRYPTO
+#include <Adafruit_nRFCrypto.h>
+#endif
+
 static BLEDfu bledfu;
 
 static void connect_callback(uint16_t conn_handle) {
@@ -21,6 +25,11 @@ static void disconnect_callback(uint16_t conn_handle, uint8_t reason) {
 
 void NRF52Board::begin() {
   startup_reason = BD_STARTUP_NORMAL;
+
+  #ifdef USE_CC310_HW_CRYPTO
+    // CC310 TRNG is higher quality and environment-independent vs radio RSSI noise.
+    nRFCrypto.begin();
+  #endif
 }
 
 #ifdef NRF52_POWER_MANAGEMENT
@@ -130,10 +139,7 @@ void NRF52Board::initiateShutdown(uint8_t reason) {
   enterSystemOff(reason);
 }
 
-void NRF52Board::enterSystemOff(uint8_t reason) {
-  MESH_DEBUG_PRINTLN("PWRMGT: Entering SYSTEMOFF (%s)", getShutdownReasonString(reason));
-
-  // Record shutdown reason in GPREGRET2
+void NRF52Board::recordShutdownReason(uint8_t reason) {
   uint8_t sd_enabled = 0;
   sd_softdevice_is_enabled(&sd_enabled);
   if (sd_enabled) {
@@ -142,6 +148,14 @@ void NRF52Board::enterSystemOff(uint8_t reason) {
   } else {
     NRF_POWER->GPREGRET2 = reason;
   }
+}
+
+void NRF52Board::enterSystemOff(uint8_t reason) {
+  MESH_DEBUG_PRINTLN("PWRMGT: Entering SYSTEMOFF (%s)", getShutdownReasonString(reason));
+
+  recordShutdownReason(reason);
+  uint8_t sd_enabled = 0;
+  sd_softdevice_is_enabled(&sd_enabled);
 
   // Flush serial buffers
   Serial.flush();
@@ -164,10 +178,26 @@ void NRF52Board::enterSystemOff(uint8_t reason) {
   NVIC_SystemReset();
 }
 
-void NRF52Board::configureVoltageWake(uint8_t ain_channel, uint8_t refsel) {
+bool NRF52Board::configureVoltageWake(uint8_t ain_channel, uint8_t refsel) {
+  // Arm USB recovery before touching LPCOMP. If the comparator cannot become
+  // ready, callers can still enter a low-consumption degraded SYSTEMOFF that
+  // is recoverable with a cable instead of looping on reset.
+  uint8_t sd_enabled = 0;
+  sd_softdevice_is_enabled(&sd_enabled);
+  if (sd_enabled) {
+    sd_power_usbdetected_enable(1);
+  } else {
+    NRF_POWER->EVENTS_USBDETECTED = 0;
+    NRF_POWER->INTENSET = POWER_INTENSET_USBDETECTED_Msk;
+  }
+
   // LPCOMP is not managed by SoftDevice - direct register access required
-  // Halt and disable before reconfiguration
-  NRF_LPCOMP->TASKS_STOP = 1;
+  // LPCOMP has a STOP task but no STOPPED event. Allow the task to settle
+  // before disabling and reconfiguring the peripheral.
+  if (NRF_LPCOMP->ENABLE == LPCOMP_ENABLE_ENABLE_Enabled) {
+    NRF_LPCOMP->TASKS_STOP = 1;
+    delayMicroseconds(200);
+  }
   NRF_LPCOMP->ENABLE = LPCOMP_ENABLE_ENABLE_Disabled;
 
   // Select analog input (AIN0-7 maps to PSEL 0-7)
@@ -195,9 +225,15 @@ void NRF52Board::configureVoltageWake(uint8_t ain_channel, uint8_t refsel) {
   NRF_LPCOMP->ENABLE = LPCOMP_ENABLE_ENABLE_Enabled;
   NRF_LPCOMP->TASKS_START = 1;
 
-  // Wait for comparator to settle before entering SYSTEMOFF
-  for (uint8_t i = 0; i < 20 && !NRF_LPCOMP->EVENTS_READY; i++) {
-    delayMicroseconds(50);
+  // Wait for comparator to settle. Entering SYSTEMOFF while READY is pending
+  // is explicitly forbidden by the nRF52840 product specification.
+  for (uint16_t i = 0; i < 2000 && !NRF_LPCOMP->EVENTS_READY; i++) {
+    delayMicroseconds(10);
+  }
+  if (!NRF_LPCOMP->EVENTS_READY) {
+    MESH_DEBUG_PRINTLN("PWRMGT: LPCOMP failed to become ready");
+    NRF_LPCOMP->TASKS_STOP = 1;
+    return false;
   }
 
   if (refsel == 7) {
@@ -211,17 +247,8 @@ void NRF52Board::configureVoltageWake(uint8_t ain_channel, uint8_t refsel) {
       ain_channel, ref_num);
   }
 
-  // Configure VBUS (USB power) wake alongside LPCOMP
-  uint8_t sd_enabled = 0;
-  sd_softdevice_is_enabled(&sd_enabled);
-  if (sd_enabled) {
-    sd_power_usbdetected_enable(1);
-  } else {
-    NRF_POWER->EVENTS_USBDETECTED = 0;
-    NRF_POWER->INTENSET = POWER_INTENSET_USBDETECTED_Msk;
-  }
-
   MESH_DEBUG_PRINTLN("PWRMGT: VBUS wake configured");
+  return true;
 }
 #endif
 
@@ -351,6 +378,10 @@ void NRF52Board::shutdownPeripherals() {
   if(sensors.getLocationProvider() != NULL) {
     sensors.getLocationProvider()->stop();
   }
+
+#ifdef USE_CC310_HW_CRYPTO
+    nRFCrypto.end();
+#endif
 
   // Flush serial buffers
   Serial.flush();

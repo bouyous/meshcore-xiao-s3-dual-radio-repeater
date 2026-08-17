@@ -12,6 +12,12 @@
 #elif defined(ESP32)
   #include <SPIFFS.h>
   using File = fs::File;
+  #ifndef FILE_O_READ
+    #define FILE_O_READ FILE_READ
+  #endif
+  #ifndef FILE_O_WRITE
+    #define FILE_O_WRITE FILE_WRITE
+  #endif
 #endif
 
 #ifdef WITH_RS232_BRIDGE
@@ -25,15 +31,22 @@
 #endif
 
 #include <helpers/AdvertDataHelpers.h>
+#if defined(P1_POWER_ALERTS)
+#include <helpers/AlertRecipientList.h>
+#endif
 #include <helpers/ArduinoHelpers.h>
 #include <helpers/ClientACL.h>
 #include <helpers/CommonCLI.h>
 #include <helpers/IdentityStore.h>
+#if defined(P1_EVENT_LOG)
+#include <helpers/GpsPowerGuard.h>
+#endif
 #include <helpers/SimpleMeshTables.h>
 #include <helpers/StaticPoolPacketManager.h>
 #include <helpers/StatsFormatHelper.h>
 #include <helpers/TxtDataHelpers.h>
 #include <helpers/RegionMap.h>
+#include <helpers/RoutingPolicy.h>
 #include "RateLimiter.h"
 
 #ifdef WITH_BRIDGE
@@ -70,16 +83,37 @@ struct NeighbourInfo {
 };
 
 #ifndef FIRMWARE_BUILD_DATE
-  #define FIRMWARE_BUILD_DATE   "9 Aug 2026"
+  #define FIRMWARE_BUILD_DATE   "14 Aug 2026"
 #endif
 
 #ifndef FIRMWARE_VERSION
-  #define FIRMWARE_VERSION   "v1.17.0"
+  #define FIRMWARE_VERSION   "v1.17.1"
+#endif
+
+#ifndef POWER_ALERT_NODE_LABEL
+  #define POWER_ALERT_NODE_LABEL "P1"
+#endif
+
+#ifndef POWER_ALERT_CHANNEL_COMMAND
+  #define POWER_ALERT_CHANNEL_COMMAND "!p1"
 #endif
 
 #define FIRMWARE_ROLE "repeater"
 
 #define PACKET_LOG_FILE  "/packet_log"
+#if defined(P1_EVENT_LOG)
+#define P1_GPS_CONTINUOUS_FILE  "/p1_gps_continuous"
+#define P1_GPS_POWER_GUARD_FILE      "/p1_gps_powerguard"
+#define P1_GPS_POWER_GUARD_TEMP_FILE "/p1_gps_powerguard.tmp"
+#endif
+#if defined(P1_POWER_ALERTS)
+#define P1_ALERT_RECIPIENTS_FILE      "/p1_alert_recipients"
+#define P1_ALERT_RECIPIENTS_TEMP_FILE "/p1_alert_recipients.tmp"
+#define P1_ALERT_CONFIG_FILE           "/p1_alert_config"
+#define P1_ALERT_CONFIG_TEMP_FILE      "/p1_alert_config.tmp"
+#define P1_ALERT_CHANNEL_FILE           "/p1_alert_channel"
+#define P1_ALERT_CHANNEL_TEMP_FILE      "/p1_alert_channel.tmp"
+#endif
 
 class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   FILESYSTEM* _fs;
@@ -128,6 +162,76 @@ class MyMesh : public mesh::Mesh, public CommonCLICallbacks {
   mesh::Packet* createSelfAdvert();
 
   File openAppend(const char* fname);
+#if defined(P1_EVENT_LOG)
+  bool persistGpsContinuous(bool enabled);
+  bool gpsContinuousPersisted() const;
+  mesh::GpsPowerGuardMode gps_power_guard_mode =
+      mesh::GpsPowerGuardMode::ECONOMY;
+  bool loadGpsPowerGuard();
+  bool saveGpsPowerGuard();
+  void handleGpsPowerGuardCommand(const char* command, char* reply);
+#endif
+#if defined(P1_POWER_ALERTS)
+  enum class AlertDestination : uint8_t {
+    PRIVATE = 0,
+    PUBLIC,
+    CUSTOM_CHANNEL
+  };
+  static constexpr size_t MAX_ALERT_RECIPIENTS = 4;
+  static constexpr size_t MAX_ALERT_TEXT_LEN = 140;
+  static constexpr size_t MAX_ALERT_CHANNEL_NAME_LEN = 31;
+  static constexpr size_t MAX_ALERT_CHANNEL_KEY_LEN = 64;
+  mesh::AlertRecipientList<MAX_ALERT_RECIPIENTS> alert_recipients;
+  AlertDestination alert_destination = AlertDestination::PRIVATE;
+  mesh::GroupChannel public_alert_channel = {};
+  mesh::GroupChannel custom_alert_channel = {};
+  char custom_alert_channel_name[MAX_ALERT_CHANNEL_NAME_LEN + 1] = {};
+  char custom_alert_channel_key[MAX_ALERT_CHANNEL_KEY_LEN + 1] = {};
+  bool custom_alert_channel_configured = false;
+  uint32_t pending_alert_ack[MAX_ALERT_RECIPIENTS] = {};
+  bool pending_alert_waiting[MAX_ALERT_RECIPIENTS] = {};
+  char pending_alert_text[MAX_ALERT_TEXT_LEN + 1] = {};
+  uint32_t pending_alert_timestamp[MAX_ALERT_RECIPIENTS] = {};
+  uint32_t pending_alert_retry_at = 0;
+  uint32_t pending_alert_finish_at = 0;
+  bool pending_alert_active = false;
+  bool pending_alert_retried = false;
+  bool pending_alert_channel_waiting = false;
+  uint32_t pending_alert_channel_timestamp = 0;
+  bool deferred_alert_pending = false;
+  char deferred_alert_text[MAX_ALERT_TEXT_LEN + 1] = {};
+  bool power_state_initialized = false;
+  char previous_power_state[16] = {};
+  uint16_t early_alert_mv = P1_EARLY_ALERT_MV;
+  uint16_t early_alert_clear_mv = P1_EARLY_ALERT_CLEAR_MV;
+  bool early_alert_latched = false;
+  uint32_t last_channel_cli_at = 0;
+
+  bool loadAlertRecipients();
+  bool saveAlertRecipients();
+  bool loadAlertConfig();
+  bool saveAlertConfig();
+  bool loadAlertChannelConfig();
+  bool saveAlertChannelConfig();
+  bool configureAlertChannel(mesh::GroupChannel& channel,
+                             const char* encoded_key,
+                             char* normalized_key = nullptr,
+                             size_t normalized_key_size = 0);
+  bool sendGroupText(const mesh::GroupChannel& channel, const char* text,
+                     uint32_t timestamp, uint32_t delay_millis = 0,
+                     const mesh::Packet* reply_to = nullptr);
+  bool sendAlertToChannel(const char* text);
+  bool sendChannelCliReply(const char* text,
+                           const mesh::Packet* incoming_packet,
+                           uint32_t incoming_timestamp);
+  void handleChannelCli(const char* command, char* reply, size_t reply_size);
+  uint8_t alertDestinationCount() const;
+  const char* alertDestinationName() const;
+  bool sendAlertTo(size_t index, const char* text, uint8_t attempt);
+  uint8_t startOperationalAlert(const char* text, bool replace_active = false);
+  void serviceOperationalAlerts();
+  void handleAlertCommand(const char* command, char* reply);
+#endif
   bool isLooped(const mesh::Packet* packet, const uint8_t max_counters[]);
 
 protected:
@@ -162,6 +266,12 @@ protected:
 
 #if ENV_INCLUDE_GPS == 1
   void applyGpsPrefs() {
+  #ifdef GPS_SCHEDULE_FORCE_ENABLE
+    if (!_prefs.gps_enabled) {
+      _prefs.gps_enabled = 1;
+      savePrefs();
+    }
+  #endif
     sensors.setSettingValue("gps", _prefs.gps_enabled?"1":"0");
   }
 #endif
@@ -175,6 +285,15 @@ protected:
   void onPeerDataRecv(mesh::Packet* packet, uint8_t type, int sender_idx, const uint8_t* secret, uint8_t* data, size_t len) override;
   bool onPeerPathRecv(mesh::Packet* packet, int sender_idx, const uint8_t* secret, uint8_t* path, uint8_t path_len, uint8_t extra_type, uint8_t* extra, uint8_t extra_len) override;
   void onControlDataRecv(mesh::Packet* packet) override;
+#if defined(P1_POWER_ALERTS)
+  void onAckRecv(mesh::Packet* packet, uint32_t ack_crc) override;
+  int searchChannelsByHash(const uint8_t* hash,
+                           mesh::GroupChannel channels[],
+                           int max_matches) override;
+  void onGroupDataRecv(mesh::Packet* packet, uint8_t type,
+                       const mesh::GroupChannel& channel, uint8_t* data,
+                       size_t len) override;
+#endif
 
   void sendFloodReply(mesh::Packet* packet, unsigned long delay_millis, uint8_t path_hash_size);
 
@@ -225,6 +344,19 @@ public:
 
   void saveIdentity(const mesh::LocalIdentity& new_id) override;
   void clearStats() override;
+
+#if defined(P1_POWER_ALERTS)
+  void notifyPowerStatus(const mesh::MainBoard::PowerStatus& status);
+  void sendBootAlert(uint16_t battery_mv, const char* reset_reason,
+                     const char* previous_shutdown_reason);
+  void sendGpsFixAlert(uint32_t acquisition_seconds, int32_t satellites);
+#endif
+#if defined(P1_EVENT_LOG)
+  bool shouldGpsPowerSave(const mesh::MainBoard::PowerStatus& status) const {
+    return mesh::GpsPowerGuard::shouldSuppress(gps_power_guard_mode,
+                                               status.state);
+  }
+#endif
 
   void handleCommand(uint32_t sender_timestamp, char* command, char* reply);
   void loop();

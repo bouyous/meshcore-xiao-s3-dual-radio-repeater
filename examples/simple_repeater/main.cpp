@@ -3,6 +3,10 @@
 
 #include "MyMesh.h"
 
+#if defined(P1_EVENT_LOG_QSPI)
+  #include <CustomLFS_QSPIFlash.h>
+#endif
+
 #ifdef DISPLAY_CLASS
   #include "UITask.h"
   static UITask ui_task(board, display);
@@ -18,6 +22,38 @@ SimpleMeshTables tables;
 
 MyMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
+#if defined(P1_EVENT_LOG_QSPI)
+static bool migrateP1EventJournal(Adafruit_LittleFS& source,
+                                  Adafruit_LittleFS& destination) {
+  static constexpr const char* path = "/p1_events.bin";
+  if (destination.exists(path)) return true;
+  if (!source.exists(path)) return true;
+
+  File input = source.open(path, FILE_O_READ);
+  File output = destination.open(path, FILE_O_WRITE);
+  if (!input || !output) {
+    if (input) input.close();
+    if (output) output.close();
+    return false;
+  }
+
+  uint8_t buffer[120];  // exactly four packed journal records
+  bool ok = true;
+  while (input.available()) {
+    const int count = input.read(buffer, sizeof(buffer));
+    if (count <= 0 || output.write(buffer, count) != (size_t)count) {
+      ok = false;
+      break;
+    }
+  }
+  output.flush();
+  input.close();
+  output.close();
+  if (!ok) destination.remove(path);
+  return ok;
+}
+#endif
+
 void halt() {
   while (1) ;
 }
@@ -30,9 +66,41 @@ static char ethernet_command[160];
 // For power saving
 unsigned long POWERSAVING_FIRSTSLEEP_SECS = 120; // The first sleep (if enabled) from boot
 
-#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_)
+#if defined(AUTO_SHUTDOWN_MILLIVOLTS) && !defined(RUNTIME_POWER_MANAGEMENT)
+#ifndef LOW_VOLTAGE_CHECK_INTERVAL_MILLIS
+#define LOW_VOLTAGE_CHECK_INTERVAL_MILLIS 30000
+#endif
+#ifndef LOW_VOLTAGE_CONFIRMATIONS
+#define LOW_VOLTAGE_CONFIRMATIONS 3
+#endif
+
+static unsigned long nextLowVoltageCheck = 0;
+static uint8_t consecutiveLowVoltageReadings = 0;
+
+static void checkLowVoltageShutdown() {
+  unsigned long now = millis();
+  if ((int32_t)(now - nextLowVoltageCheck) < 0) return;
+  nextLowVoltageCheck = now + LOW_VOLTAGE_CHECK_INTERVAL_MILLIS;
+
+  uint16_t battery_millivolts = board.getBattMilliVolts();
+  if (battery_millivolts > 1000 && battery_millivolts < AUTO_SHUTDOWN_MILLIVOLTS) {
+    if (consecutiveLowVoltageReadings < LOW_VOLTAGE_CONFIRMATIONS) {
+      consecutiveLowVoltageReadings++;
+    }
+
+    if (consecutiveLowVoltageReadings >= LOW_VOLTAGE_CONFIRMATIONS) {
+      Serial.printf("Battery low (%u mV); entering recovery sleep.\n", battery_millivolts);
+      Serial.flush();
+      board.powerOffLowVoltage(); // does not return on supported boards
+    }
+  } else {
+    consecutiveLowVoltageReadings = 0;
+  }
+}
+#endif
+
+#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && P1_BUTTON_POWEROFF_ENABLED
 static unsigned long userBtnDownAt = 0;
-#define USER_BTN_HOLD_OFF_MILLIS 1500
 #endif
 
 void setup() {
@@ -40,6 +108,68 @@ void setup() {
   delay(1000);
 
   board.begin();
+
+  FILESYSTEM* fs;
+#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  const bool filesystem_ready = InternalFS.begin();
+  fs = &InternalFS;
+  IdentityStore store(InternalFS, "");
+#elif defined(ESP32)
+  const bool filesystem_ready = SPIFFS.begin(true);
+  fs = &SPIFFS;
+  IdentityStore store(SPIFFS, "/identity");
+#elif defined(RP2040_PLATFORM)
+  const bool filesystem_ready = LittleFS.begin();
+  fs = &LittleFS;
+  IdentityStore store(LittleFS, "/identity");
+  store.begin();
+#else
+  #error "need to define filesystem"
+#endif
+
+  if (!filesystem_ready) {
+    Serial.println("FATAL: filesystem init failed");
+    halt();
+  }
+
+#if defined(P1_EVENT_LOG)
+  Adafruit_LittleFS* journal_fs = fs;
+#if defined(P1_EVENT_LOG_QSPI)
+  // InternalFS writes on nRF52 can wait forever for a missed SoftDevice flash
+  // event.  The P1's dedicated P25Q16H QSPI device has bounded operation
+  // timeouts, so keep high-frequency diagnostics away from MCU flash.
+  if (QSPIFlash.begin()) {
+    journal_fs = &QSPIFlash;
+    Serial.println("P1 event journal: external QSPI");
+    if (!migrateP1EventJournal(*fs, QSPIFlash)) {
+      Serial.println("ERROR: legacy P1 journal migration failed");
+    }
+  } else {
+    journal_fs = nullptr;
+    Serial.println("ERROR: QSPI event journal unavailable; logging disabled");
+  }
+#endif
+  if (journal_fs && p1_event_journal.begin(*journal_fs, rtc_clock)) {
+    board.setEventJournal(&p1_event_journal);
+    sensors.setEventSink(&p1_event_journal);
+    p1_event_journal.recordBoot(board.getResetReason(),
+                                board.getShutdownReason(),
+                                board.getBootVoltage(),
+                                board.isExternalPowered());
+    uint8_t released_buttons = 0;
+#ifdef PIN_BUTTON1
+    if (digitalRead(PIN_BUTTON1) == HIGH) released_buttons |= 0x01;
+#endif
+#ifdef PIN_BUTTON2
+    if (digitalRead(PIN_BUTTON2) == HIGH) released_buttons |= 0x02;
+#else
+    released_buttons |= 0x02;
+#endif
+    p1_event_journal.recordButtonState(released_buttons);
+  } else {
+    Serial.println("ERROR: P1 event journal unavailable");
+  }
+#endif
 
 #ifdef HAS_EXTERNAL_WATCHDOG
   external_watchdog.begin();
@@ -62,28 +192,14 @@ void setup() {
 
   if (!radio_init()) {
     MESH_DEBUG_PRINTLN("Radio init failed!");
+#if defined(P1_EVENT_LOG)
+    p1_event_journal.recordInitError(P1EventJournal::INIT_ERROR_RADIO);
+#endif
     halt();
   }
 
   fast_rng.begin(radio_driver.getRngSeed());
 
-  FILESYSTEM* fs;
-#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
-  InternalFS.begin();
-  fs = &InternalFS;
-  IdentityStore store(InternalFS, "");
-#elif defined(ESP32)
-  SPIFFS.begin(true);
-  fs = &SPIFFS;
-  IdentityStore store(SPIFFS, "/identity");
-#elif defined(RP2040_PLATFORM)
-  LittleFS.begin();
-  fs = &LittleFS;
-  IdentityStore store(LittleFS, "/identity");
-  store.begin();
-#else
-  #error "need to define filesystem"
-#endif
   if (!store.load("_main", the_mesh.self_id)) {
     MESH_DEBUG_PRINTLN("Generating new keypair");
     the_mesh.self_id = radio_new_identity();   // create new random identity
@@ -103,10 +219,25 @@ void setup() {
 #endif
 
 #ifndef DISABLE_SENSOR_DISCOVERY
-  sensors.begin();
+  if (!sensors.begin()) {
+#if defined(P1_EVENT_LOG)
+    p1_event_journal.recordInitError(P1EventJournal::INIT_ERROR_SENSORS);
+#endif
+  }
 #endif
 
   the_mesh.begin(fs);
+
+#if defined(P1_EVENT_LOG)
+  NodePrefs* radio_prefs = the_mesh.getNodePrefs();
+  p1_event_journal.recordRadioReady(radio_prefs->freq,
+                                    radio_prefs->tx_power_dbm,
+                                    radio_prefs->sf,
+                                    radio_prefs->cr);
+  Serial.printf("Radio ready: %.6f MHz, TX %d dBm, SF%u, CR%u\n",
+                radio_prefs->freq, radio_prefs->tx_power_dbm,
+                radio_prefs->sf, radio_prefs->cr);
+#endif
 
 #ifdef DISPLAY_CLASS
   ui_task.begin(the_mesh.getNodePrefs(), FIRMWARE_BUILD_DATE, FIRMWARE_VERSION);
@@ -122,6 +253,15 @@ void setup() {
 #endif
 
   board.onBootComplete();
+#if defined(P1_EVENT_LOG)
+  p1_event_journal.recordBootComplete(board.getBattMilliVolts());
+#endif
+#if defined(P1_POWER_ALERTS)
+  the_mesh.sendBootAlert(
+      board.getBattMilliVolts(),
+      board.getResetReasonString(board.getResetReason()),
+      board.getShutdownReasonString(board.getShutdownReason()));
+#endif
 }
 
 void loop() {
@@ -172,13 +312,14 @@ void loop() {
   }
 #endif
 
-#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && !defined(DISPLAY_CLASS)
+#if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && \
+    P1_BUTTON_POWEROFF_ENABLED && !defined(DISPLAY_CLASS)
   // Hold the user button to power off the SenseCAP Solar repeater.
   int btnState = digitalRead(PIN_USER_BTN);
   if (btnState == LOW) {
     if (userBtnDownAt == 0) {
       userBtnDownAt = millis();
-    } else if ((unsigned long)(millis() - userBtnDownAt) >= USER_BTN_HOLD_OFF_MILLIS) {
+    } else if ((unsigned long)(millis() - userBtnDownAt) >= P1_BUTTON_POWEROFF_HOLD_MS) {
       Serial.println("Powering off...");
       board.powerOff();  // does not return
     }
@@ -188,7 +329,46 @@ void loop() {
 #endif
 
   the_mesh.loop();
+  board.servicePowerManagement();
+  mesh::MainBoard::PowerStatus power_status;
+  if (board.getPowerStatus(power_status)) {
+#if defined(P1_POWER_ALERTS)
+    the_mesh.notifyPowerStatus(power_status);
+#endif
+#if defined(P1_EVENT_LOG)
+    sensors.setPowerSaveMode(the_mesh.shouldGpsPowerSave(power_status));
+#else
+    sensors.setPowerSaveMode(power_status.power_saving);
+#endif
+  }
   sensors.loop();
+#if defined(AUTO_SHUTDOWN_MILLIVOLTS) && !defined(RUNTIME_POWER_MANAGEMENT)
+  checkLowVoltageShutdown();
+#endif
+  if (sensors.consumeFreshLocation()) {
+#if defined(P1_POWER_ALERTS)
+    uint32_t acquisition_seconds = 0;
+    int32_t satellites = 0;
+    if (sensors.getLastGpsFixInfo(acquisition_seconds, satellites)) {
+      the_mesh.sendGpsFixAlert(acquisition_seconds, satellites);
+    }
+#endif
+    // One flood advert per scheduled GPS window, after the first valid fix,
+    // so the daily acquisition is actually propagated through the mesh.
+    NodePrefs* prefs = the_mesh.getNodePrefs();
+    // Do not erase internal flash for normal GPS wander.  Roughly 0.001 deg
+    // is 70-110 m in France: large enough to persist a genuine relocation,
+    // while ordinary fixes remain RAM-only and are still advertised.
+    const bool location_changed =
+        fabs(prefs->node_lat - sensors.node_lat) > 0.001 ||
+        fabs(prefs->node_lon - sensors.node_lon) > 0.001 ||
+        prefs->advert_loc_policy != ADVERT_LOC_PREFS;
+    prefs->node_lat = sensors.node_lat;
+    prefs->node_lon = sensors.node_lon;
+    prefs->advert_loc_policy = ADVERT_LOC_PREFS;
+    if (location_changed) the_mesh.savePrefs();
+    the_mesh.sendSelfAdvertisement(1500, true);
+  }
 #ifdef DISPLAY_CLASS
   ui_task.loop();
 #endif

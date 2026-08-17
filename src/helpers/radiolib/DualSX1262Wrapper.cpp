@@ -555,8 +555,14 @@ void DualSX1262Wrapper::resetAGC() {
     return;
   }
 
-  if (_slots[PortValley].enabled) sx126xResetAGC((SX126x*)_slots[PortValley].radio);
-  if (_slots[PortBackhaul].enabled) sx126xResetAGC((SX126x*)_slots[PortBackhaul].radio);
+  if (_slots[PortValley].enabled) {
+    sx126xResetAGC((SX126x*)_slots[PortValley].radio,
+                   SX126X_RX_BOOSTED_GAIN);
+  }
+  if (_slots[PortBackhaul].enabled) {
+    sx126xResetAGC((SX126x*)_slots[PortBackhaul].radio,
+                   SX126X_RX_BOOSTED_GAIN);
+  }
 
   for (int i = 0; i < 2; i++) {
     _slots[i].state = StateIdle;

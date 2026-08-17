@@ -39,8 +39,9 @@ protected:
   uint16_t boot_voltage_mv;           // Battery voltage at boot (millivolts)
 
   bool checkBootVoltage(const PowerMgtConfig* config);
+  void recordShutdownReason(uint8_t reason);
   void enterSystemOff(uint8_t reason);
-  void configureVoltageWake(uint8_t ain_channel, uint8_t refsel);
+  bool configureVoltageWake(uint8_t ain_channel, uint8_t refsel);
   virtual void initiateShutdown(uint8_t reason);
 #endif
 

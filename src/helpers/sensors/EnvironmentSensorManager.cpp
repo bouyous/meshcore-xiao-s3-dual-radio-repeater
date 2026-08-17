@@ -713,11 +713,28 @@ const char* EnvironmentSensorManager::getSettingValue(int i) const {
 bool EnvironmentSensorManager::setSettingValue(const char* name, const char* value) {
   #if ENV_INCLUDE_GPS
   if (gps_detected && strcmp(name, "gps") == 0) {
+    #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+    const bool enabled = strcmp(value, "0") != 0;
+    gps_schedule.setEnabled(enabled, millis());
+    if (!enabled) {
+      gps_advert_pending = false;
+      if (gps_active) stop_gps();
+      updateGpsSchedule(millis());
+    } else {
+      updateGpsSchedule(millis());
+    }
+    #else
     if (strcmp(value, "0") == 0) {
+      gps_resume_after_power_save = false;
       stop_gps();
     } else {
-      start_gps();
+      if (gps_power_save_mode) {
+        gps_resume_after_power_save = true;
+      } else {
+        start_gps();
+      }
     }
+    #endif
     return true;
   }
   if (strcmp(name, "gps_interval") == 0) {
@@ -728,6 +745,210 @@ bool EnvironmentSensorManager::setSettingValue(const char* name, const char* val
   #endif
   return false;  // not supported
 }
+
+void EnvironmentSensorManager::setPowerSaveMode(bool enabled) {
+#if ENV_INCLUDE_GPS
+  if (enabled == gps_power_save_mode) return;
+
+  #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  gps_power_save_mode = enabled;
+  gps_schedule.setSuppressed(enabled);
+  updateGpsSchedule(millis());
+  #else
+  if (enabled) {
+    gps_resume_after_power_save = gps_active;
+    gps_power_save_mode = true;
+    if (gps_active) stop_gps();
+  } else {
+    gps_power_save_mode = false;
+    if (gps_resume_after_power_save) start_gps();
+    gps_resume_after_power_save = false;
+  }
+  #endif
+#else
+  (void)enabled;
+#endif
+}
+
+bool EnvironmentSensorManager::consumeFreshLocation() {
+#if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  const bool pending = gps_advert_pending;
+  gps_advert_pending = false;
+  return pending;
+#else
+  return false;
+#endif
+}
+
+bool EnvironmentSensorManager::getLastGpsFixInfo(
+    uint32_t& acquisition_seconds, int32_t& satellites) const {
+#if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  if (!gps_fix_advert_sent) return false;
+  acquisition_seconds = gps_last_fix_acquisition_seconds;
+  satellites = gps_last_fix_satellites;
+  return true;
+#else
+  (void)acquisition_seconds;
+  (void)satellites;
+  return false;
+#endif
+}
+
+bool EnvironmentSensorManager::getGpsScheduleStatus(char* status, size_t max_len) const {
+#if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  if (!status || max_len == 0) return false;
+  if (!gps_detected) {
+    snprintf(status, max_len, "GPS not detected");
+    return true;
+  }
+  if (!gps_schedule.enabled()) {
+    snprintf(status, max_len, "disabled; GPS %s", gps_active ? "on" : "off");
+    return true;
+  }
+
+  const uint32_t now = millis();
+  if (gps_override.mode() == mesh::GpsOverrideMode::CONTINUOUS) {
+    snprintf(status, max_len,
+             "enabled; GPS %s; power-save %s; override continuous; daily %lus/%lus",
+             gps_active ? "on" : "off", gps_power_save_mode ? "yes" : "no",
+             (unsigned long)gps_schedule.windowSeconds(),
+             (unsigned long)gps_schedule.periodSeconds());
+    return true;
+  }
+  if (gps_override.active(now)) {
+    snprintf(status, max_len,
+             "enabled; GPS %s; power-save %s; override timed remaining %lus; daily %lus/%lus",
+             gps_active ? "on" : "off", gps_power_save_mode ? "yes" : "no",
+             (unsigned long)gps_override.remainingSeconds(now),
+             (unsigned long)gps_schedule.windowSeconds(),
+             (unsigned long)gps_schedule.periodSeconds());
+    return true;
+  }
+  const uint32_t remaining = gps_schedule.secondsRemaining(now);
+  const uint32_t next = gps_schedule.secondsUntilNextWindow(now);
+  snprintf(status, max_len,
+           "enabled; GPS %s; power-save %s; window %lus/%lus; remaining %lus; next %lus",
+           gps_active ? "on" : "off", gps_power_save_mode ? "yes" : "no",
+           (unsigned long)gps_schedule.windowSeconds(),
+           (unsigned long)gps_schedule.periodSeconds(),
+           (unsigned long)remaining, (unsigned long)next);
+  return true;
+#else
+  (void)status;
+  (void)max_len;
+  return false;
+#endif
+}
+
+bool EnvironmentSensorManager::handleGpsOverrideCommand(
+    const char* argument, char* reply, size_t max_len) {
+#if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  if (!argument || !reply || max_len == 0) return false;
+  while (*argument == ' ') argument++;
+  const uint32_t now = millis();
+
+  if (!gps_detected) {
+    snprintf(reply, max_len, "ERR - GPS not detected");
+    return true;
+  }
+
+  if (*argument == 0 || strcmp(argument, "status") == 0) {
+    if (gps_override.mode() == mesh::GpsOverrideMode::CONTINUOUS) {
+      snprintf(reply, max_len, "continuous; GPS %s; power protection %s",
+               gps_active ? "on" : "off", gps_power_save_mode ? "active" : "clear");
+    } else if (gps_override.active(now)) {
+      snprintf(reply, max_len, "timed; remaining %lus; GPS %s; power protection %s",
+               (unsigned long)gps_override.remainingSeconds(now),
+               gps_active ? "on" : "off", gps_power_save_mode ? "active" : "clear");
+    } else {
+      snprintf(reply, max_len, "off; daily schedule active; GPS %s",
+               gps_active ? "on" : "off");
+    }
+    return true;
+  }
+
+  const bool replacing = gps_override.mode() != mesh::GpsOverrideMode::OFF;
+  const uint32_t previous_elapsed_ms = gps_override.elapsedSeconds(now) * 1000U;
+
+  if (strcmp(argument, "off") == 0) {
+    if (replacing) {
+      gps_override.clear();
+      emitRuntimeEvent(SensorRuntimeEventType::GPS_OVERRIDE_END, 0,
+                       previous_elapsed_ms, 0);  // manual
+    }
+    updateGpsSchedule(now);
+    snprintf(reply, max_len, "OK - override off; daily schedule; GPS %s",
+             gps_active ? "on" : "off");
+    return true;
+  }
+
+  if (strcmp(argument, "on") == 0) {
+    if (replacing) {
+      emitRuntimeEvent(SensorRuntimeEventType::GPS_OVERRIDE_END, 0,
+                       previous_elapsed_ms, 2);  // replaced
+    }
+    gps_override.startContinuous(now);
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_OVERRIDE_START, 0, 0, -1);
+    updateGpsSchedule(now);
+    snprintf(reply, max_len, "OK - continuous until off; GPS %s",
+             gps_active ? "on" : "off");
+    return true;
+  }
+
+  char* end = nullptr;
+  const unsigned long hours = strtoul(argument, &end, 10);
+  if (end == argument || strcmp(end, "h") != 0 || hours < 1 || hours > 168) {
+    snprintf(reply, max_len, "ERR - use status, off, on, or 1h..168h");
+    return true;
+  }
+
+  if (replacing) {
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_OVERRIDE_END, 0,
+                     previous_elapsed_ms, 2);  // replaced
+  }
+  const uint32_t duration_ms = (uint32_t)hours * 60U * 60U * 1000U;
+  gps_override.startTimed(now, duration_ms);
+  emitRuntimeEvent(SensorRuntimeEventType::GPS_OVERRIDE_START, 0,
+                   duration_ms, (int32_t)hours);
+  updateGpsSchedule(now);
+  snprintf(reply, max_len, "OK - override %luh; GPS %s; power protection has priority",
+           hours, gps_active ? "on" : "off");
+  return true;
+#else
+  (void)argument;
+  (void)reply;
+  (void)max_len;
+  return false;
+#endif
+}
+
+#if ENV_INCLUDE_GPS && defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+void EnvironmentSensorManager::updateGpsSchedule(uint32_t now_ms) {
+  const uint32_t override_elapsed_ms = gps_override.elapsedSeconds(now_ms) * 1000U;
+  if (gps_override.expireIfNeeded(now_ms)) {
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_OVERRIDE_END, 0,
+                     override_elapsed_ms, 1);  // automatic expiry
+  }
+  const bool window_open = gps_schedule.windowOpen(now_ms) ||
+                           gps_override.active(now_ms);
+  if (window_open && !gps_schedule_window_open) {
+    gps_fix_advert_sent = false;
+    gps_window_had_fix = false;
+    gps_time_sync_reported = false;
+    gps_window_started_ms = now_ms;
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_WINDOW_START);
+  } else if (!window_open && gps_schedule_window_open) {
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_WINDOW_END, 0,
+                     (uint32_t)(now_ms - gps_window_started_ms),
+                     gps_window_had_fix ? 1 : 0);
+  }
+  gps_schedule_window_open = window_open;
+
+  const bool should_run = !gps_power_save_mode && window_open;
+  if (should_run && !gps_active) start_gps();
+  else if (!should_run && gps_active) stop_gps();
+}
+#endif
 
 #if ENV_INCLUDE_GPS
 void EnvironmentSensorManager::initBasicGPS() {
@@ -743,6 +964,11 @@ void EnvironmentSensorManager::initBasicGPS() {
   // Try to detect if GPS is physically connected to determine if we should expose the setting
   _location->begin();
   _location->reset();
+  #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  // Clear any fix retained by the NMEA parser and request a fresh daily time
+  // synchronization instead of advertising yesterday's validity state.
+  _location->syncTime();
+  #endif
 
   #ifndef PIN_GPS_EN
     MESH_DEBUG_PRINTLN("No GPS wake/reset pin found for this board. Continuing on...");
@@ -760,12 +986,14 @@ void EnvironmentSensorManager::initBasicGPS() {
 
   if (gps_detected) {
     MESH_DEBUG_PRINTLN("GPS detected");
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_DETECTED);
     #ifdef PERSISTANT_GPS
       gps_active = true;
       return;
     #endif
   } else {
     MESH_DEBUG_PRINTLN("No GPS detected");
+    emitRuntimeEvent(SensorRuntimeEventType::GPS_NOT_DETECTED);
   }
   _location->stop();
   gps_active = false; //Set GPS visibility off until setting is changed
@@ -862,6 +1090,16 @@ bool EnvironmentSensorManager::gpsIsAwake(uint8_t ioPin){
 
 void EnvironmentSensorManager::start_gps() {
   gps_active = true;
+  #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  gps_powered_since_ms = millis();
+  // A restart after a battery-saving pause is a new acquisition.  Publish
+  // and report its first fix even when the daily/continuous window remained
+  // logically open throughout the pause.
+  gps_fix_advert_sent = false;
+  gps_advert_pending = false;
+  gps_last_fix_acquisition_seconds = 0;
+  gps_last_fix_satellites = 0;
+  #endif
   #ifdef RAK_WISBLOCK_GPS
     pinMode(gpsResetPin, OUTPUT);
     digitalWrite(gpsResetPin, HIGH);
@@ -870,6 +1108,9 @@ void EnvironmentSensorManager::start_gps() {
 
   _location->begin();
   _location->reset();
+  #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  _location->syncTime();
+  #endif
 
 #ifndef PIN_GPS_EN
   MESH_DEBUG_PRINTLN("Start GPS is N/A on this board. Actual GPS state unchanged");
@@ -896,9 +1137,22 @@ void EnvironmentSensorManager::stop_gps() {
 void EnvironmentSensorManager::loop() {
 
   #if ENV_INCLUDE_GPS
+  #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  updateGpsSchedule(millis());
+  #endif
   static unsigned long next_gps_update = 0;
   if (gps_active) {
     _location->loop();
+    #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+    if (gps_schedule_window_open && !gps_time_sync_reported &&
+        _location->isValid() && !_location->waitingTimeSync()) {
+      gps_time_sync_reported = true;
+      emitRuntimeEvent(SensorRuntimeEventType::GPS_TIME_SYNC,
+                       (uint32_t)_location->getTimestamp(),
+                       (uint32_t)(millis() - gps_powered_since_ms),
+                       (int32_t)_location->satellitesCount());
+    }
+    #endif
   }
   if ((long)(millis() - next_gps_update) > 0) {
 
@@ -918,6 +1172,20 @@ void EnvironmentSensorManager::loop() {
       MESH_DEBUG_PRINTLN("lat %f lon %f", node_lat, node_lon);
       node_altitude = ((double)_location->getAltitude()) / 1000.0;
       MESH_DEBUG_PRINTLN("lat %f lon %f alt %f", node_lat, node_lon, node_altitude);
+      #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+      if (gps_schedule_window_open && !gps_fix_advert_sent) {
+        gps_fix_advert_sent = true;
+        gps_advert_pending = true;
+        gps_window_had_fix = true;
+        gps_last_fix_acquisition_seconds =
+            (uint32_t)(millis() - gps_powered_since_ms) / 1000U;
+        gps_last_fix_satellites = (int32_t)_location->satellitesCount();
+        emitRuntimeEvent(SensorRuntimeEventType::GPS_FIRST_FIX,
+                         (uint32_t)_location->getTimestamp(),
+                         (uint32_t)(millis() - gps_powered_since_ms),
+                         gps_last_fix_satellites);
+      }
+      #endif
     }
     #endif
     }

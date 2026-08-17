@@ -9,6 +9,10 @@
 #define BRIDGE_MAX_BAUD 115200
 #endif
 
+#ifndef MAX_LORA_TX_POWER
+#define MAX_LORA_TX_POWER 30
+#endif
+
 // Believe it or not, this std C function is busted on some platforms!
 static uint32_t _atoi(const char* sp) {
   uint32_t n = 0;
@@ -28,6 +32,7 @@ static bool isValidName(const char *n) {
 }
 
 void CommonCLI::loadPrefs(FILESYSTEM* fs) {
+  bool prefs_loaded = false;
   if (fs->exists("/prefs.json")) {
 #if defined(RP2040_PLATFORM)
     File file = fs->open("/prefs.json", "r");
@@ -37,12 +42,23 @@ void CommonCLI::loadPrefs(FILESYSTEM* fs) {
     if (file) {
       _prefs->loadSerial(file);   // new Serial prefs
       file.close();
+      prefs_loaded = true;
     }
   } else if (fs->exists("/com_prefs")) {
     loadPrefsInt(fs, "/com_prefs");
+    prefs_loaded = true;
     if (savePrefs(fs)) {  // save to new Serial prefs
   //    fs->remove("/com_prefs");  // remove old
     }
+  }
+
+  // JSON preferences bypass the legacy sanitisation block below.  Clamp an
+  // out-of-range persisted value here and repair it once so every subsequent
+  // boot reports and applies the power the radio can actually produce.
+  if (prefs_loaded) {
+    const int8_t requested = _prefs->tx_power_dbm;
+    _prefs->tx_power_dbm = constrain(requested, -9, MAX_LORA_TX_POWER);
+    if (_prefs->tx_power_dbm != requested) savePrefs(fs);
   }
 }
 
@@ -113,7 +129,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {  // Legacy 
     _prefs->bw = constrain(_prefs->bw, 7.8f, 500.0f);
     _prefs->sf = constrain(_prefs->sf, 5, 12);
     _prefs->cr = constrain(_prefs->cr, 5, 8);
-    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, 30);
+    _prefs->tx_power_dbm = constrain(_prefs->tx_power_dbm, -9, MAX_LORA_TX_POWER);
     _prefs->multi_acks = constrain(_prefs->multi_acks, 0, 1);
     _prefs->adc_multiplier = constrain(_prefs->adc_multiplier, 0.0f, 10.0f);
     _prefs->path_hash_mode = constrain(_prefs->path_hash_mode, 0, 2);   // NOTE: mode 3 reserved for future
@@ -133,6 +149,7 @@ void CommonCLI::loadPrefsInt(FILESYSTEM* fs, const char* filename) {  // Legacy 
     // sanitise settings
     _prefs->rx_boosted_gain = constrain(_prefs->rx_boosted_gain, 0, 1); // boolean
     _prefs->radio_fem_rxgain = constrain(_prefs->radio_fem_rxgain, 0, 1); // boolean
+    _prefs->radio_fem_txgain = constrain(_prefs->radio_fem_txgain, 0, 1); // boolean
     _prefs->cad_enabled = constrain(_prefs->cad_enabled, 0, 1); // boolean
 
     file.close();
@@ -562,6 +579,28 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
     } else {
       strcpy(reply, "Error: state must be on or off");
     }
+  } else if (memcmp(config, "radio.fem.txgain ", 17) == 0) {
+    if (!_board->canControlLoRaFemPaGain()) {
+      strcpy(reply, "Error: unsupported");
+    } else if (memcmp(&config[17], "on", 2) == 0) {
+      if (_board->setLoRaFemPaGainEnabled(true)) {
+        _prefs->radio_fem_txgain = 1;
+        savePrefs();
+        strcpy(reply, "OK - LoRa FEM TX gain on");
+      } else {
+        strcpy(reply, "Error: failed to apply LoRa FEM TX gain");
+      }
+    } else if (memcmp(&config[17], "off", 3) == 0) {
+      if (_board->setLoRaFemPaGainEnabled(false)) {
+        _prefs->radio_fem_txgain = 0;
+        savePrefs();
+        strcpy(reply, "OK - LoRa FEM TX gain off");
+      } else {
+        strcpy(reply, "Error: failed to apply LoRa FEM TX gain");
+      }
+    } else {
+      strcpy(reply, "Error: state must be on or off");
+    }
   } else if (memcmp(config, "radio ", 6) == 0) {
     strcpy(tmp, &config[6]);
     const char *parts[4];
@@ -683,10 +722,15 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, char* command, char* rep
       strcpy(reply, "OK");
     }
   } else if (memcmp(config, "tx ", 3) == 0) {
-    _prefs->tx_power_dbm = atoi(&config[3]);
-    savePrefs();
-    _callbacks->setTxPower(_prefs->tx_power_dbm);
-    strcpy(reply, "OK");
+    const int power = atoi(&config[3]);
+    if (power < -9 || power > MAX_LORA_TX_POWER) {
+      sprintf(reply, "Error, tx must be -9..%d dBm", MAX_LORA_TX_POWER);
+    } else {
+      _prefs->tx_power_dbm = power;
+      savePrefs();
+      _callbacks->setTxPower(_prefs->tx_power_dbm);
+      strcpy(reply, "OK");
+    }
   } else if (sender_timestamp == 0 && memcmp(config, "freq ", 5) == 0) {
     _prefs->freq = atof(&config[5]);
     savePrefs();
@@ -827,6 +871,12 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, char* command, char* rep
     } else {
       sprintf(reply, "> %s", _board->isLoRaFemLnaEnabled() ? "on" : "off");
     }
+  } else if (memcmp(config, "radio.fem.txgain", 16) == 0) {
+    if (!_board->canControlLoRaFemPaGain()) {
+      strcpy(reply, "Error: unsupported");
+    } else {
+      sprintf(reply, "> %s", _board->isLoRaFemPaGainEnabled() ? "on" : "off");
+    }
   } else if (memcmp(config, "radio", 5) == 0) {
     char freq[16], bw[16];
     strcpy(freq, StrHelper::ftoa(_prefs->freq));
@@ -944,6 +994,48 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, char* command, char* rep
 #else
     strcpy(reply, "ERROR: Power management not supported");
 #endif
+  } else if (memcmp(config, "power.state", 11) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %s", status.state);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.vbat", 10) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %u mV", status.battery_mv);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.lowtime", 13) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %lu s", (unsigned long)status.low_seconds);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.wakethreshold", 19) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) sprintf(reply, "> %s", status.wake_threshold);
+    else strcpy(reply, "ERROR: Runtime power management not supported");
+  } else if (memcmp(config, "power.status", 12) == 0) {
+    mesh::MainBoard::PowerStatus status;
+    if (_board->getPowerStatus(status)) {
+      sprintf(reply, "> %u mV; %s; low %lu/%lu s; off %u mV",
+        status.battery_mv, status.state, (unsigned long)status.low_seconds,
+        (unsigned long)status.shutdown_delay_seconds, status.shutdown_mv);
+    } else {
+      strcpy(reply, "ERROR: Runtime power management not supported");
+    }
+  } else if (memcmp(config, "power.temp", 10) == 0) {
+    float battery_temperature_c = 0.0f;
+    if (_board->getBatteryTemperature(battery_temperature_c)) {
+      snprintf(reply, 160, "> battery %.1f C", battery_temperature_c);
+    } else {
+      snprintf(reply, 160, "> battery NTC unavailable to MCU; MCU %.1f C",
+               _board->getMCUTemperature());
+    }
+  } else if (memcmp(config, "power.chargeguard", 17) == 0) {
+    snprintf(reply, 160, "> %s", _board->getChargeTemperatureGuardStatus());
+  } else if (memcmp(config, "gps.schedule", 12) == 0) {
+    char status[136];
+    if (_sensors->getGpsScheduleStatus(status, sizeof(status))) {
+      snprintf(reply, 160, "> %s", status);
+    } else {
+      strcpy(reply, "ERROR: GPS schedule not supported");
+    }
   } else if (memcmp(config, "extra.sf", 8) == 0) {
     char* tmp = reply;
     for (int i = 0; i < 3 && _prefs->extra_sf[i] != 0; i++) {
