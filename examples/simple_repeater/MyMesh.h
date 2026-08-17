@@ -12,6 +12,12 @@
 #elif defined(ESP32)
   #include <SPIFFS.h>
   using File = fs::File;
+  #ifndef FILE_O_READ
+    #define FILE_O_READ FILE_READ
+  #endif
+  #ifndef FILE_O_WRITE
+    #define FILE_O_WRITE FILE_WRITE
+  #endif
 #endif
 
 #ifdef WITH_RS232_BRIDGE
@@ -82,6 +88,14 @@ struct NeighbourInfo {
 
 #ifndef FIRMWARE_VERSION
   #define FIRMWARE_VERSION   "v1.17.1"
+#endif
+
+#ifndef POWER_ALERT_NODE_LABEL
+  #define POWER_ALERT_NODE_LABEL "P1"
+#endif
+
+#ifndef POWER_ALERT_CHANNEL_COMMAND
+  #define POWER_ALERT_CHANNEL_COMMAND "!p1"
 #endif
 
 #define FIRMWARE_ROLE "repeater"

@@ -1090,8 +1090,8 @@ bool EnvironmentSensorManager::gpsIsAwake(uint8_t ioPin){
 
 void EnvironmentSensorManager::start_gps() {
   gps_active = true;
-  gps_powered_since_ms = millis();
   #if defined(GPS_SCHEDULE_PERIOD_SEC) && defined(GPS_SCHEDULE_WINDOW_SEC)
+  gps_powered_since_ms = millis();
   // A restart after a battery-saving pause is a new acquisition.  Publish
   // and report its first fix even when the daily/continuous window remained
   // logically open throughout the pause.

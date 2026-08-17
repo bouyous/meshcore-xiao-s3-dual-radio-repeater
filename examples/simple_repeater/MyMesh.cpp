@@ -1302,7 +1302,8 @@ void MyMesh::handleChannelCli(const char* command, char* reply,
 
   if (!command || *command == '\0' || strcmp(command, "help") == 0) {
     snprintf(reply, reply_size,
-             "CLI OK: !p1 status|battery|gps|version|alerts|help");
+             "CLI OK: %s status|battery|gps|version|alerts|help",
+             POWER_ALERT_CHANNEL_COMMAND);
     return;
   }
   if (strcmp(command, "version") == 0) {
@@ -1352,7 +1353,8 @@ void MyMesh::handleChannelCli(const char* command, char* reply,
     return;
   }
 
-  snprintf(reply, reply_size, "CLI ERR: commande inconnue; envoyer !p1 help");
+  snprintf(reply, reply_size, "CLI ERR: commande inconnue; envoyer %s help",
+           POWER_ALERT_CHANNEL_COMMAND);
 }
 
 bool MyMesh::sendAlertTo(size_t index, const char* text, uint8_t attempt) {
@@ -1489,8 +1491,10 @@ void MyMesh::onGroupDataRecv(mesh::Packet* packet, uint8_t type,
   if (sender_separator) message = sender_separator + 2;
   while (*message == ' ') message++;
 
-  if (strncmp(message, "!p1", 3) != 0 ||
-      !(message[3] == '\0' || message[3] == ' ')) {
+  const size_t command_prefix_len = strlen(POWER_ALERT_CHANNEL_COMMAND);
+  if (strncmp(message, POWER_ALERT_CHANNEL_COMMAND, command_prefix_len) != 0 ||
+      !(message[command_prefix_len] == '\0' ||
+        message[command_prefix_len] == ' ')) {
     return;
   }
 
@@ -1504,7 +1508,7 @@ void MyMesh::onGroupDataRecv(mesh::Packet* packet, uint8_t type,
   }
   last_channel_cli_at = now;
 
-  const char* command = message + 3;
+  const char* command = message + command_prefix_len;
   while (*command == ' ') command++;
   char reply[MAX_ALERT_TEXT_LEN + 1];
   handleChannelCli(command, reply, sizeof(reply));
@@ -1529,8 +1533,8 @@ void MyMesh::notifyPowerStatus(const mesh::MainBoard::PowerStatus& status) {
       early_alert_latched = true;
       char text[MAX_ALERT_TEXT_LEN + 1];
       snprintf(text, sizeof(text),
-               "P1 alerte arret: batterie %u mV; seuil veille %u mV approche; noeud encore actif.",
-               status.battery_mv, status.shutdown_mv);
+               "%s alerte arret: batterie %u mV; seuil veille %u mV approche; noeud encore actif.",
+               POWER_ALERT_NODE_LABEL, status.battery_mv, status.shutdown_mv);
       startOperationalAlert(text);
     } else if (early_alert_latched &&
                status.battery_mv >= early_alert_clear_mv) {
@@ -1551,8 +1555,8 @@ void MyMesh::notifyPowerStatus(const mesh::MainBoard::PowerStatus& status) {
   if (strcmp(status.state, "systemoff") == 0) {
     char text[MAX_ALERT_TEXT_LEN + 1];
     snprintf(text, sizeof(text),
-             "P1: batterie faible %u mV. Arret LoRa et mise en veille imminents.",
-             status.battery_mv);
+             "%s: batterie faible %u mV. Arret LoRa et mise en veille imminents.",
+             POWER_ALERT_NODE_LABEL, status.battery_mv);
     // The shutdown alert has priority over a diagnostic/test message because
     // the radio grace period is intentionally short.
     startOperationalAlert(text, true);
@@ -1563,8 +1567,8 @@ void MyMesh::sendBootAlert(uint16_t battery_mv, const char* reset_reason,
                            const char* previous_shutdown_reason) {
   char text[MAX_ALERT_TEXT_LEN + 1];
   snprintf(text, sizeof(text),
-           "P1 demarre: batterie %u mV; reset=%s; arret precedent=%s.",
-           battery_mv, reset_reason ? reset_reason : "?",
+           "%s demarre: batterie %u mV; reset=%s; arret precedent=%s.",
+           POWER_ALERT_NODE_LABEL, battery_mv, reset_reason ? reset_reason : "?",
            previous_shutdown_reason ? previous_shutdown_reason : "?");
   startOperationalAlert(text);
 }
@@ -1573,8 +1577,9 @@ void MyMesh::sendGpsFixAlert(uint32_t acquisition_seconds,
                              int32_t satellites) {
   char text[MAX_ALERT_TEXT_LEN + 1];
   snprintf(text, sizeof(text),
-           "P1 GPS recupere: fix en %lu s; %ld satellite(s); position actualisee.",
-           (unsigned long)acquisition_seconds, (long)satellites);
+           "%s GPS recupere: fix en %lu s; %ld satellite(s); position actualisee.",
+           POWER_ALERT_NODE_LABEL, (unsigned long)acquisition_seconds,
+           (long)satellites);
   startOperationalAlert(text);
 }
 
@@ -1812,8 +1817,8 @@ void MyMesh::handleAlertCommand(const char* command, char* reply) {
   if (strcmp(command, "test") == 0) {
     char text[MAX_ALERT_TEXT_LEN + 1];
     snprintf(text, sizeof(text),
-             "P1 test alerte: radio operationnelle, batterie %u mV.",
-             board.getBattMilliVolts());
+             "%s test alerte: radio operationnelle, batterie %u mV.",
+             POWER_ALERT_NODE_LABEL, board.getBattMilliVolts());
     const uint8_t sent = startOperationalAlert(text);
     snprintf(reply, 160,
              sent ? "OK - test queued -> %s" : "ERR - no alert queued",

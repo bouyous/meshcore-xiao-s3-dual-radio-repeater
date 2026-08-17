@@ -66,6 +66,39 @@ static char ethernet_command[160];
 // For power saving
 unsigned long POWERSAVING_FIRSTSLEEP_SECS = 120; // The first sleep (if enabled) from boot
 
+#if defined(AUTO_SHUTDOWN_MILLIVOLTS) && !defined(RUNTIME_POWER_MANAGEMENT)
+#ifndef LOW_VOLTAGE_CHECK_INTERVAL_MILLIS
+#define LOW_VOLTAGE_CHECK_INTERVAL_MILLIS 30000
+#endif
+#ifndef LOW_VOLTAGE_CONFIRMATIONS
+#define LOW_VOLTAGE_CONFIRMATIONS 3
+#endif
+
+static unsigned long nextLowVoltageCheck = 0;
+static uint8_t consecutiveLowVoltageReadings = 0;
+
+static void checkLowVoltageShutdown() {
+  unsigned long now = millis();
+  if ((int32_t)(now - nextLowVoltageCheck) < 0) return;
+  nextLowVoltageCheck = now + LOW_VOLTAGE_CHECK_INTERVAL_MILLIS;
+
+  uint16_t battery_millivolts = board.getBattMilliVolts();
+  if (battery_millivolts > 1000 && battery_millivolts < AUTO_SHUTDOWN_MILLIVOLTS) {
+    if (consecutiveLowVoltageReadings < LOW_VOLTAGE_CONFIRMATIONS) {
+      consecutiveLowVoltageReadings++;
+    }
+
+    if (consecutiveLowVoltageReadings >= LOW_VOLTAGE_CONFIRMATIONS) {
+      Serial.printf("Battery low (%u mV); entering recovery sleep.\n", battery_millivolts);
+      Serial.flush();
+      board.powerOffLowVoltage(); // does not return on supported boards
+    }
+  } else {
+    consecutiveLowVoltageReadings = 0;
+  }
+}
+#endif
+
 #if defined(PIN_USER_BTN) && defined(_SEEED_SENSECAP_SOLAR_H_) && P1_BUTTON_POWEROFF_ENABLED
 static unsigned long userBtnDownAt = 0;
 #endif
@@ -309,6 +342,9 @@ void loop() {
 #endif
   }
   sensors.loop();
+#if defined(AUTO_SHUTDOWN_MILLIVOLTS) && !defined(RUNTIME_POWER_MANAGEMENT)
+  checkLowVoltageShutdown();
+#endif
   if (sensors.consumeFreshLocation()) {
 #if defined(P1_POWER_ALERTS)
     uint32_t acquisition_seconds = 0;
