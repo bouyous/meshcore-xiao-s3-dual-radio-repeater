@@ -2,6 +2,8 @@
 
 [Version française](README.fr.md) | English documentation below
 
+Firmware family: [SenseCAP P1 Recovery](https://github.com/bouyous/MeshCore-SenseCAP-P1-Recovery) · [Heltec V4 Recovery](https://github.com/bouyous/MeshCore-Heltec-V4-Recovery) · [XIAO single-radio Recovery](https://github.com/bouyous/MeshCore-XIAO-S3-WIO-Recovery)
+
 Experimental MeshCore repeater firmware for one **Seeed Studio XIAO ESP32-S3** driving two **Seeed Studio Wio-SX1262 for XIAO** radio boards.
 
 The node keeps one MeshCore identity and therefore appears as one repeater. The two physical RF ports have distinct jobs:
@@ -9,7 +11,10 @@ The node keeps one MeshCore identity and therefore appears as one repeater. The 
 - `VALLEY`: Wio-SX1262 connected through the standard 30-pin board-to-board connector, intended for an omnidirectional local-coverage antenna.
 - `BACKHAUL`: second Wio-SX1262 connected through the XIAO side headers, intended for a directional point-to-point antenna.
 
-This is a hardware-tested custom build based on MeshCore `repeater-v1.17.0` commit `727fc051`. Version `v1.17.0-dual.2` was validated on the XIAO ESP32-S3 dual-SX1262 assembly while preserving its MeshCore identity and per-port configuration. It is not an official MeshCore release.
+The dual-radio transport was hardware-validated in version `v1.17.0-dual.2`.
+The current `v1.17.1-dual-recovery.1` image ports it to MeshCore 1.17.1 and
+adds P1-style persistent channel alerts plus autonomous low-voltage recovery.
+It is not an official MeshCore release.
 
 ![Concept illustration of the dual-radio summit repeater](docs/assets/dual-radio-repeater-overview.png)
 
@@ -30,10 +35,15 @@ See [Development history](docs/HISTORY.md) for the full sequence and measured re
 - 2 x matched LoRa antennas or dummy loads
 - Side headers for the second Wio-SX1262
 - Optional qualified rechargeable 3.7 V LiPo and insulated pigtail, soldered to the XIAO underside before stacking
+- Required battery-sense divider: 1.0 MOhm from `BAT+` to D4/GPIO5, 330 kOhm from D4/GPIO5 to GND, and 100 nF from D4/GPIO5 to GND
 
 The side-header mapping was checked against Seeed's published schematics and validated on the two physical Wio-SX1262 boards used for this prototype. Hardware revisions can differ, so verify the silkscreen and continuity before soldering another revision.
 
 Full instructions: [Wiring tutorial](docs/WIRING.md).
+The battery divider and recovery thresholds are specified separately in
+[Battery measurement and recovery](docs/POWER_RECOVERY.md). Seeed confirms that
+the XIAO ESP32-S3 has no internal battery-to-ADC connection, so this external
+circuit is mandatory for automatic shutdown and restart.
 
 ## Photo assembly tutorial
 
@@ -52,6 +62,8 @@ The [step-by-step assembly guide](docs/ASSEMBLY.md) uses photographs of the actu
 - Identical frames received simultaneously are coalesced; the port with the better SNR/RSSI becomes the ingress port.
 - MeshCore's packet-hash table remains the final duplicate and loop protection layer.
 - RF frequency, bandwidth, spreading factor and coding rate remain common to both radios.
+- P1-compatible low-battery alerts can target Public, a private recipient, or a persisted custom MeshCore channel.
+- Low-voltage shutdown holds both SX1262 radios in reset, wakes every 5 minutes, and resumes at 3.70 V.
 
 ![Packet flow and TX arbitration](docs/assets/dual-radio-architecture.svg)
 
@@ -89,6 +101,9 @@ Install PlatformIO, then run from the repository root:
 pio run -e Xiao_S3_WIO_dual_repeater
 ```
 
+The produced application image at
+`.pio/build/Xiao_S3_WIO_dual_repeater/firmware.bin` is the OTA Wi-Fi image.
+
 Flash a connected XIAO:
 
 ```powershell
@@ -97,22 +112,15 @@ pio run -e Xiao_S3_WIO_dual_repeater -t upload --upload-port COM26
 
 Replace `COM26` with the port assigned by Windows.
 
-## Prebuilt firmware
+## Prebuilt OTA firmware
 
-Two images are provided in [`firmware/`](firmware/):
+The current release provides
+`MeshCore-v1.17.1-XIAO-S3-Dual-Recovery-OTA.bin`. It is the application image
+for the XIAO Wi-Fi OTA form. Previous factory and application images remain in
+[`firmware/`](firmware/) for release-history purposes, but they do not include
+the battery recovery or channel-alert feature.
 
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2.bin`: application image for offset `0x10000`.
-- `MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin`: complete image for offset `0x0`.
-
-Verify hashes against [`firmware/SHA256SUMS.txt`](firmware/SHA256SUMS.txt).
-
-Example for the merged image:
-
-```powershell
-esptool.py --chip esp32s3 --port COM26 write_flash 0x0 firmware/MeshCore_Xiao_S3_WIO_dual_repeater_v1.17.0-dual.2-merged.bin
-```
-
-Read [FLASHING.md](docs/FLASHING.md) before using the command, especially when choosing between the merged and application-only images.
+Verify the current asset against the SHA-256 value shown in the release notes.
 
 After a fresh or merged-image flash, connect through the MeshCore configurator and replace the default administration password (`password`) before deployment. An application-only update normally preserves the existing MeshCore identity and settings, but always verify them after flashing.
 
@@ -130,6 +138,8 @@ Validated on the bench on 10 and 11 July 2026:
 - per-port enable, power, guard and statistics commands;
 - settings survive reboot;
 - original MeshCore repeater identity survives firmware updates.
+- MeshCore 1.17.1 single- and dual-radio recovery environments compile successfully;
+- hardware low-voltage cycling for the new external divider remains a mandatory per-unit bench test before unattended deployment.
 
 See the exact results and remaining gaps in [TEST_REPORT.md](docs/TEST_REPORT.md).
 

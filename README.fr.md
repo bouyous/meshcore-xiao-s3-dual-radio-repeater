@@ -2,6 +2,15 @@
 
 [Documentation anglaise](README.md)
 
+Famille de firmwares : [SenseCAP P1 Recovery](https://github.com/bouyous/MeshCore-SenseCAP-P1-Recovery) · [Heltec V4 Recovery](https://github.com/bouyous/MeshCore-Heltec-V4-Recovery) · [XIAO une radio Recovery](https://github.com/bouyous/MeshCore-XIAO-S3-WIO-Recovery)
+
+La release actuelle `v1.17.1-dual-recovery.1` ajoute les alertes de canal du
+P1 et le redémarrage automatique après arrêt basse tension. Cette fonction
+exige un pont externe : 1,0 MOhm entre `BAT+` et D4/GPIO5, 330 kOhm entre
+D4/GPIO5 et GND, puis 100 nF entre D4/GPIO5 et GND. Ne reliez jamais la
+batterie directement au GPIO. Consultez
+[Alimentation et reprise](docs/POWER_RECOVERY.md) avant le flash OTA.
+
 Ce dépôt contient un firmware expérimental pour piloter deux cartes radio **Seeed Studio Wio-SX1262 for XIAO** depuis un seul **Seeed Studio XIAO ESP32-S3**.
 
 Le but est de construire un relais de sommet avec une seule identité MeshCore :
